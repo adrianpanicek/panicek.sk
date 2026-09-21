@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.artifacts/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+docs/content-notes.md
+docs/implementation-progress.md
+docs/site-design.md
+docs/superpowers/
+
+.git-local/

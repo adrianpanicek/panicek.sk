@@ -1,0 +1,12 @@
+[Unit]
+Description=Check panicek.sk master builds every two minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=2min
+RandomizedDelaySec=15s
+Persistent=true
+Unit=panicek-update.service
+
+[Install]
+WantedBy=timers.target

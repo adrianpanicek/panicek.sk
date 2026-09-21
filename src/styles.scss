@@ -1,0 +1,569 @@
+@font-face {
+  font-family: Ubuntu Mono;
+  src: url('/assets/ubuntu-mono-latin-ext-400-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0100-02FF, U+1E00-1EFF;
+}
+
+@font-face {
+  font-family: Ubuntu Mono;
+  src: url('/assets/ubuntu-mono-latin-400-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Ubuntu Mono;
+  src: url('/assets/ubuntu-mono-latin-ext-700-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0100-02FF, U+1E00-1EFF;
+}
+
+@font-face {
+  font-family: Ubuntu Mono;
+  src: url('/assets/ubuntu-mono-latin-700-normal.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: 'Ubuntu Mono', monospace;
+  font-size: 16px;
+  background: var(--bg);
+  color: var(--text);
+  --bg: #0b0d10;
+  --surface: #14171d;
+  --text: #c4c9d2;
+  --bright: #edf0f5;
+  --green: #70dbac;
+  --cyan: #4dd9d0;
+  --blue: #65baff;
+  --muted: #8893a5;
+  --warning: #efb85f;
+  --border: #292f39;
+  --selection: #354453;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 8px;
+  line-height: 1;
+}
+main {
+  min-height: calc(100svh - 16px);
+  display: flex;
+  flex-direction: column;
+}
+.terminal {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+.entry {
+  margin: 0 0 0.9em;
+}
+.prompt-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cwd {
+  color: var(--green);
+}
+.command-name {
+  color: var(--cyan);
+}
+.argument {
+  color: var(--text);
+}
+.markdown {
+  display: flow-root;
+  margin: 0.4em 0 0;
+  max-width: min(100%, 80ch);
+  overflow-wrap: anywhere;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-size: 1em;
+  line-height: inherit;
+  font-weight: 700;
+  color: var(--bright);
+  margin: 0.9em 0 0.4em;
+}
+.markdown h1:first-child {
+  margin-top: 0;
+}
+.markdown h1::before {
+  content: '# ';
+  color: var(--muted);
+}
+.markdown h2::before {
+  content: '## ';
+  color: var(--muted);
+}
+.markdown h3::before {
+  content: '### ';
+  color: var(--muted);
+}
+.markdown p {
+  margin: 0.4em 0;
+}
+.markdown ul,
+.markdown ol {
+  padding-left: 2ch;
+  margin: 0.4em 0;
+}
+.markdown li {
+  margin: 0.08em 0;
+}
+.markdown li::marker {
+  color: var(--muted);
+}
+a {
+  color: var(--cyan);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: #386f73;
+}
+a:hover {
+  color: var(--bright);
+  text-decoration-color: var(--cyan);
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 1px solid var(--cyan);
+  outline-offset: 3px;
+}
+.markdown pre,
+.output {
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0.4em 0;
+}
+.markdown code {
+  font: inherit;
+  color: var(--text);
+}
+.markdown blockquote {
+  margin: 0.4em 0;
+  border-left: 2px solid var(--border);
+  padding-left: 2ch;
+}
+.markdown table {
+  border-collapse: collapse;
+  display: block;
+  overflow: auto;
+}
+.markdown td,
+.markdown th {
+  padding: 0.25em 1ch;
+  border: 1px solid var(--border);
+}
+.error,
+#exit-status {
+  color: var(--warning);
+}
+#command-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0;
+  min-height: 1.5em;
+  margin: 0 0 1.5em;
+  white-space: pre;
+}
+#command-form[hidden],
+[hidden] {
+  display: none !important;
+}
+.input-wrap {
+  position: relative;
+  flex: 1 1 12ch;
+  min-width: 0;
+  max-width: 100%;
+}
+#command,
+#input-highlight {
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  white-space: pre;
+  width: 100%;
+  background: transparent;
+}
+#command {
+  position: relative;
+  z-index: 1;
+  outline: none;
+  color: transparent;
+  caret-color: transparent;
+  border-radius: 0;
+}
+#command:disabled {
+  opacity: 0.5;
+}
+#input-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: hidden;
+  height: 1.4em;
+}
+#command::selection {
+  background: var(--selection);
+  color: var(--bright);
+}
+footer {
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  gap: 1ch;
+  align-items: baseline;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding: 0.75em 0 0.3em;
+  margin-top: 2em;
+}
+footer a,
+footer button {
+  color: var(--muted);
+}
+button {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--cyan);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+#status {
+  margin-right: auto;
+}
+.warning {
+  color: var(--warning);
+}
+::selection {
+  background: var(--selection);
+  color: var(--bright);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 600px) {
+  body {
+    padding: 8px;
+    font-size: 16px;
+  }
+  .markdown {
+    max-width: 100%;
+  }
+  footer {
+    line-height: 1.6;
+  }
+  #command {
+    font-size: 16px;
+  }
+  #input-highlight {
+    font-size: 16px;
+  }
+}
+
+.entry {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+textarea#command {
+  display: block;
+  resize: none;
+  min-height: 1em;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre;
+}
+#input-highlight {
+  height: 100%;
+  white-space: pre;
+  overflow: hidden;
+}
+.scrollback-note {
+  color: var(--muted);
+}
+
+/* Markdown reading view: a clear heading hierarchy with the terminal palette. */
+.markdown h1 {
+  font-size: 1.6em;
+  color: var(--bright);
+  line-height: 1.2;
+  margin: 0.8em 0 0.35em;
+}
+
+.markdown h2 {
+  font-size: 1.2em;
+  color: var(--text);
+  line-height: 1.25;
+  margin: 1em 0 0.4em;
+}
+
+.markdown h3 {
+  font-size: 1.08em;
+  color: var(--bright);
+  line-height: 1.3;
+}
+
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-size: 1em;
+  color: var(--text);
+  margin: 1em 0 0.5em;
+}
+
+.markdown h1::before,
+.markdown h2::before,
+.markdown h3::before {
+  font-size: 0.65em;
+  color: #707d90;
+  font-weight: 400;
+}
+
+.markdown strong {
+  color: var(--bright);
+}
+.markdown em {
+  color: var(--text);
+}
+.markdown del {
+  color: var(--muted);
+}
+
+.markdown code {
+  background: var(--surface);
+  border-radius: 3px;
+  padding: 0.08em 0.25em;
+}
+
+.markdown pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75em 1em;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.markdown blockquote {
+  border-left: 2px solid var(--border);
+  color: var(--muted);
+  padding: 0.2em 1em;
+}
+
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1.2em 0;
+}
+
+.markdown.error {
+  border-left: 2px solid var(--warning);
+  padding-left: 1ch;
+}
+
+.user {
+  color: var(--cyan);
+  font-weight: 700;
+}
+.host {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+/* A single steady block follows the real textarea selection and scroll position. */
+.block-caret {
+  display: inline-block;
+  position: relative;
+  width: 0;
+  height: 1em;
+  vertical-align: bottom;
+}
+
+.block-caret::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1ch;
+  height: 1em;
+  background: var(--bright);
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+.input-wrap:has(textarea:disabled) .block-caret {
+  opacity: 0.3;
+}
+
+#command-form > label {
+  max-width: 100%;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#vim-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 2px;
+}
+
+.vim-title,
+.vim-status {
+  padding: 4px;
+  color: var(--cyan);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+  flex-shrink: 0;
+}
+
+.vim-status {
+  color: var(--muted);
+}
+.vim-document {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+#vim-editor .cm-editor {
+  outline: none;
+}
+#vim-editor .cm-cursorLayer {
+  animation: none !important;
+}
+
+.prompt-line,
+#command-form > label {
+  color: var(--muted);
+}
+
+footer {
+  column-gap: 1.5ch;
+  row-gap: 0.5em;
+}
+footer a:hover,
+footer button:hover {
+  color: var(--cyan);
+}
+
+/* Override the Vim plugin's default pink cursor with the site palette. */
+#vim-editor .cm-fat-cursor {
+  background: var(--cyan);
+  color: var(--bg);
+}
+#vim-editor .cm-editor:not(.cm-focused) .cm-fat-cursor {
+  background: transparent;
+  outline: 1px solid var(--cyan);
+}
+
+/* Output stays quiet; shell identity and commands carry the accent colors. */
+.markdown a {
+  color: #aab9c5;
+  text-decoration-color: #56626e;
+}
+.markdown a:hover {
+  color: var(--bright);
+  text-decoration-color: var(--bright);
+}
+.markdown h1 {
+  color: #d5dae1;
+}
+.markdown h3,
+.markdown strong {
+  color: #d0d6de;
+}
+
+.markdown img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0.75em 0;
+  border-radius: 3px;
+}
+
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em 2ch;
+  margin: 0.4em 0;
+}
+.downloads a {
+  color: var(--text);
+}
+
+.youtube-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 200px;
+  margin: 0.75em 0;
+
+  iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 3px;
+  }
+}
+
+.markdown img.image-right {
+  float: right;
+  margin: 0 0 1em 2ch;
+}
+
+.markdown img.image-left {
+  float: left;
+  margin: 0 2ch 1em 0;
+}
+
+.markdown img.image-center {
+  margin-inline: auto;
+}
+
+@media (max-width: 520px) {
+  .markdown img.image-right,
+  .markdown img.image-left {
+    float: none;
+    margin: 0.75em 0;
+  }
+}

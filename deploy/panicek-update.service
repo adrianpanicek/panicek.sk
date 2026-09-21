@@ -1,0 +1,24 @@
+[Unit]
+Description=Deploy successful panicek.sk master builds
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=panicek-deploy
+Group=panicek-deploy
+ExecStart=/usr/local/lib/panicek/pull
+Environment=PORTFOLIO_REPO=adrianpanicek/panicek.sk
+Environment=PORTFOLIO_ROOT=/srv/http/panicek
+TimeoutStartSec=120
+UMask=0022
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/http/panicek
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

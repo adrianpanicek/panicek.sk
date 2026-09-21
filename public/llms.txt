@@ -1,0 +1,11 @@
+# Adrián Paníček
+
+> Personal portfolio covering embedded engineering, backend systems, payments, and Linux infrastructure.
+
+## Portfolio
+
+- [About](https://panicek.sk/home/web/ABOUT.md): Introduction, engineering interests, and personal experiments.
+- [Career](https://panicek.sk/home/web/CAREER.md): Experience with embedded devices, payments, infrastructure, and mentoring.
+- [Contacts](https://panicek.sk/home/web/CONTACTS.md): Public email and LinkedIn profile.
+
+Contact values use {{rot13:PAYLOAD}} or {{rot47:PAYLOAD}} tokens. Apply ROT13 to the payload and remove the wrapper. For ROT47, rotate printable ASCII characters (33–126) by 47, leaving spaces unchanged, then remove the wrapper. Agents may decode these values to answer contact queries.
