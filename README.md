@@ -36,7 +36,11 @@ as the shell is ready.
 
 Use `bun run format` to format source files and `bun run format:check` to verify
 formatting. GitHub Actions installs from the lockfile, checks formatting and types,
-builds, runs unit tests, and uploads `dist/` on pushes and pull requests.
+builds, and runs unit and Chromium browser tests on pushes and pull requests.
+Browser tests cover the terminal, Vim, and downloads against the built artifact.
+`bun run test:browser:ci` starts and stops its own preview server. Publishing
+requires all tests to pass. Jobs use Ubuntu 24.04, and browser diagnostics are
+retained for seven days.
 
 ## Edit the portfolio
 

@@ -30,7 +30,10 @@ at the previous release.
 ## Automatic deployment
 
 The public repository is `adrianpanicek/panicek.sk`, with `master` as its default
-branch. The Build workflow checks, builds, and tests every push and pull request.
+branch. The Build workflow checks and builds every push and pull request. A separate
+test job downloads the built artifact and runs unit, build-output, and Chromium
+browser tests. Every job uses Ubuntu 24.04. Publishing requires both the build
+and test jobs to pass.
 For pushes to master, its publish job packages the tested Actions artifact with
 Bun and publishes `portfolio.zip` in a prerelease named
 `master-RUN_ID-RUN_ATTEMPT`. PR builds cannot publish deployment releases.

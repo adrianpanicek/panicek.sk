@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -19,17 +19,49 @@ jobs:
       - run: bun run format:check
       - run: bun run check
       - run: bun run build
-      - run: bun test tests/*.test.ts
       - uses: actions/upload-artifact@v7
         with:
           name: portfolio
           path: dist/
           if-no-files-found: error
 
+  test:
+    name: Unit and browser tests
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: portfolio
+          path: dist/
+      - name: Unit and build-output tests
+        run: bun run test
+      - name: Install Chromium
+        run: bun x playwright install --with-deps chromium
+      - name: Terminal, Vim, and download browser tests
+        shell: bash
+        run: |
+          mkdir -p .artifacts
+          bun run test:browser:ci 2>&1 | tee .artifacts/browser-tests.log
+      - name: Upload browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-diagnostics
+          path: .artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: build
-    runs-on: ubuntu-latest
+    needs: [build, test]
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

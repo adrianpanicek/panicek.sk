@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "package": "bun scripts/package.ts",
-    "build:updater": "bun build deploy/pull.ts --compile --target=bun-linux-x64 --outfile .artifacts/panicek-pull"
+    "build:updater": "bun build deploy/pull.ts --compile --target=bun-linux-x64 --outfile .artifacts/panicek-pull",
+    "test:browser:ci": "bun scripts/test-browser.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
