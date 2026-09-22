@@ -8,13 +8,14 @@
     "dev": "bun scripts/dev.ts",
     "preview": "bun scripts/serve.ts",
     "test": "bun test tests/*.test.ts",
-    "test:browser": "bun tests/browser.ts && bun tests/vim-browser.ts && bun tests/download-browser.ts",
+    "test:browser": "bun tests/browser.ts && bun tests/vim-browser.ts && bun tests/download-browser.ts && bun tests/crt-browser.ts && bun tests/visitors-browser.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "package": "bun scripts/package.ts",
     "build:updater": "bun build deploy/pull.ts --compile --target=bun-linux-x64 --outfile .artifacts/panicek-pull",
-    "test:browser:ci": "bun scripts/test-browser.ts"
+    "test:browser:ci": "bun scripts/test-browser.ts",
+    "build:visitors": "bun build deploy/visitors.ts --compile --minify --target=bun-linux-x64 --outfile .artifacts/panicek-visitors"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -32,6 +33,7 @@
     "@types/html-minifier-terser": "^7.0.2",
     "fake-indexeddb": "^6.2.5",
     "html-minifier-terser": "^7.2.0",
+    "image-size": "^2.0.4",
     "playwright": "^1.63.0",
     "prettier": "^3.9.8",
     "sass": "^1.104.1",

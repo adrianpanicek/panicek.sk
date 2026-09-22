@@ -1,6 +1,9 @@
 import { Marked, Renderer } from 'marked';
 import { resolveLink } from './paths';
 
+export type ImageDimensions = Record<string, { width: number; height: number }>;
+declare const IMAGE_DIMENSIONS: ImageDimensions;
+
 export const escapeHtml = (s: string) =>
   s
     .replaceAll('&', '&amp;')
@@ -40,6 +43,9 @@ export function renderMarkdown(
   text: string,
   source: string,
   origin = 'https://panicek.sk',
+  imageDimensions: ImageDimensions = typeof IMAGE_DIMENSIONS === 'undefined'
+    ? {}
+    : IMAGE_DIMENSIONS,
 ): string {
   if (!withinMarkdownBudget(text))
     return `<p class="scrollback-note">Large output shown as plain text to keep the terminal responsive.</p><pre class="output">${escapeHtml(text)}</pre>`;
@@ -54,15 +60,23 @@ export function renderMarkdown(
     const local = resolveLink(href, source, origin);
     const src = local?.href ?? (/^https?:\/\//i.test(href) ? href : null);
     if (!src) return escapeHtml(text);
-    const layout = title?.match(/^(?:width=([1-9][0-9]{0,3}))(?: align=(left|right|center))?$/);
+    const layout = title?.match(
+      /^(?:width=([1-9][0-9]{0,3}))(?: height=([1-9][0-9]{0,3}))?(?: align=(left|right|center))?$/,
+    );
     const width = layout ? Math.min(Number(layout[1]), 4096) : null;
-    const alignment = layout?.[2];
+    const alignment = layout?.[3];
+    const size = layout?.[2]
+      ? { width: width!, height: Math.min(Number(layout[2]), 4096) }
+      : local
+        ? imageDimensions[local.path]
+        : undefined;
+    const dimensions = size ? ` width="${size.width}" height="${size.height}"` : '';
     const attributes = width
       ? ` style="width:${width}px"${alignment ? ` class="image-${alignment}"` : ''}`
       : title
         ? ` title="${escapeHtml(title)}"`
         : '';
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text)}"${attributes} loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text)}"${attributes}${dimensions} loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
   };
   renderer.link = function ({ href, tokens }) {
     const label = this.parser.parseInline(tokens);

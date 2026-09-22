@@ -15,7 +15,11 @@ try {
   page.on('request', (request) => requests.push(request.url()));
   await page.goto(base);
   const ready = () =>
-    page.waitForFunction(() => !document.querySelector<HTMLTextAreaElement>('#command')?.disabled);
+    page.waitForFunction(
+      () =>
+        !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&
+        document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
+    );
   await ready();
   assert.ok(!requests.some((url) => url.endsWith('/vim.js')));
   const input = page.locator('#command');
@@ -30,6 +34,17 @@ try {
     await page.keyboard.press('Enter');
   }
   await open('vim ~/vim-test.txt');
+  assert.equal(
+    await page.locator('#vim-editor').evaluate((node) => {
+      const screen = node.closest('.crt-viewport');
+      return (
+        !!screen &&
+        getComputedStyle(screen).filter.includes('crt-curve') &&
+        !node.closest('[inert]')
+      );
+    }),
+    true,
+  );
   await page.keyboard.type('iHello from Vim');
   await ex('q');
   await page.waitForFunction(() =>
@@ -80,12 +95,16 @@ try {
   const other = await context.newPage();
   await other.goto(base);
   await other.waitForFunction(
-    () => !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
+    () =>
+      !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
   );
   await other.locator('#command').fill('echo concurrent > /tmp/concurrent');
   await other.locator('#command').press('Enter');
   await other.waitForFunction(
-    () => !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
+    () =>
+      !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
   );
   await ex('wq');
   await page.waitForFunction(() =>

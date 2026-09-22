@@ -1,5 +1,8 @@
+import { compile } from 'sass';
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
+import { brotliDecompressSync } from 'node:zlib';
+import { imageSize } from 'image-size';
 test('build contains prerendered content, raw bytes, shortcuts and discovery metadata', async () => {
   const html = await Bun.file('dist/index.html').text();
   expect(html).toContain('Adrián Paníček');
@@ -44,9 +47,33 @@ test('build compresses HTML and SCSS and preloads the encoded filesystem', async
   );
   expect(html).not.toContain('\n<html');
   const css = await Bun.file('dist/assets/styles.css').text();
-  expect(css.length).toBeLessThan((await Bun.file('src/styles.scss').text()).length);
+  expect(css.length).toBeLessThan(compile('src/styles.scss', { style: 'expanded' }).css.length);
   expect(css).toContain('font-size:16px');
   expect(css).toContain('line-height:1');
   const files = await Bun.file('dist/filesystem.json').json();
   expect(files['/home/web/CONTACTS.md']).toBe(await Bun.file('content/CONTACTS.md').text());
+});
+
+test('worker transfer variants preserve every byte and stay within download budgets', async () => {
+  const original = new Uint8Array(await Bun.file('dist/assets/shell.worker.js').arrayBuffer());
+  const gzip = new Uint8Array(await Bun.file('dist/assets/shell.worker.js.gz').arrayBuffer());
+  const brotli = new Uint8Array(await Bun.file('dist/assets/shell.worker.js.br').arrayBuffer());
+  expect(Bun.gunzipSync(gzip)).toEqual(original);
+  expect(new Uint8Array(brotliDecompressSync(brotli))).toEqual(original);
+  expect(gzip.byteLength).toBeLessThan(450000);
+  expect(brotli.byteLength).toBeLessThan(350000);
+});
+
+test('social previews are available in static HTML with a valid large image', async () => {
+  const html = await Bun.file('dist/index.html').text();
+  const origin = process.env.SITE_ORIGIN || 'https://panicek.sk';
+  expect(html).toContain(`property="og:image" content="${origin}/assets/social-card.png"`);
+  expect(html).toContain('property="og:image:width" content="1200"');
+  expect(html).toContain('property="og:image:height" content="630"');
+  expect(html).toContain('property="og:image:alt"');
+  expect(html).toContain('name="twitter:card" content="summary_large_image"');
+  expect(html).toContain(`name="twitter:image" content="${origin}/assets/social-card.png"`);
+  const bytes = new Uint8Array(await Bun.file('dist/assets/social-card.png').arrayBuffer());
+  expect(imageSize(bytes)).toMatchObject({ width: 1200, height: 630, type: 'png' });
+  expect(bytes.length).toBeLessThan(300000);
 });

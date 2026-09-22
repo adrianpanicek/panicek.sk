@@ -28,7 +28,7 @@ export function openEditor(
   status.setAttribute('role', 'status');
   status.textContent = 'i insert · Esc normal · :w save · :q quit · :q! discard · :wq save & quit';
   panel.append(title, host, status);
-  document.body.append(panel);
+  (document.querySelector('.crt-viewport') ?? document.body).append(panel);
   document.querySelector('main')!.inert = true;
   let saved = file.text;
   let saving = false;

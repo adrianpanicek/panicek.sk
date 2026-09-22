@@ -44,6 +44,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
     { timeout: 20000 },
   );
@@ -86,27 +87,37 @@ try {
   assert.equal(caret.position, 10);
   assert.equal(caret.next, 'r');
   assert.ok(caret.width >= 7 && caret.height >= 15);
-  assert.equal(caret.animation, 'none');
+  assert.equal(caret.animation, 'cursor-blink');
   assert.equal(caret.native, 'rgba(0, 0, 0, 0)');
   await input.fill('');
-  console.log('PASS steady block cursor follows editing position without native caret');
+  console.log('PASS blinking block cursor follows editing position without native caret');
   for (const width of [320, 768, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     const geometry = await page.evaluate(() => {
       const terminal = document.querySelector('.terminal')!.getBoundingClientRect();
       const field = document.querySelector('#command')!.getBoundingClientRect();
       const article = document.querySelector('.markdown')!.getBoundingClientRect();
+      const measure = document.createElement('span');
+      measure.style.cssText = 'display:block;width:80ch;position:absolute;visibility:hidden';
+      document.querySelector('.markdown')!.append(measure);
+      const articleLimit = measure.getBoundingClientRect().width;
+      measure.remove();
       return {
+        articleLimit,
         terminal: terminal.width,
+        available:
+          document.querySelector('main')!.clientWidth -
+          parseFloat(getComputedStyle(document.querySelector('main')!).paddingLeft) -
+          parseFloat(getComputedStyle(document.querySelector('main')!).paddingRight),
         fieldRight: field.right,
         terminalRight: terminal.right,
         article: article.width,
         overflow: document.documentElement.scrollWidth > innerWidth,
       };
     });
-    assert.ok(geometry.terminal >= width - 16);
+    assert.ok(Math.abs(geometry.terminal - geometry.available) < 2);
     assert.ok(Math.abs(geometry.fieldRight - geometry.terminalRight) < 2);
-    assert.ok(Math.abs(geometry.article - Math.min(geometry.terminal, 640)) < 2);
+    assert.ok(Math.abs(geometry.article - Math.min(geometry.terminal, geometry.articleLimit)) < 2);
     assert.equal(geometry.overflow, false);
   }
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -147,6 +158,7 @@ try {
       () =>
         !!document.querySelector<HTMLTextAreaElement>('#command') &&
         !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+        document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
         !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
     );
     return page.locator('#transcript .entry').last().innerText();
@@ -194,7 +206,12 @@ try {
   await page.getByRole('link', { name: 'Career', exact: true }).click();
   await page.waitForFunction(() => {
     const el = document.querySelector<HTMLTextAreaElement>('#command');
-    return el?.readOnly && el.value.length > 0 && el.value !== 'cat ~/CAREER.md | render';
+    return (
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'true' &&
+      !!el &&
+      el.value.length > 0 &&
+      el.value !== 'cat ~/CAREER.md | render'
+    );
   });
   assert.equal(await page.locator('#transcript .entry').count(), commandCount);
   assert.ok('cat ~/CAREER.md | render'.startsWith(await input.inputValue()));
@@ -202,6 +219,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   assert.match(
@@ -210,7 +228,7 @@ try {
   );
   assert.equal(await page.locator('#cwd').innerText(), '/tmp');
   assert.match(await page.locator('#command-form label').innerText(), /web@panicek.sk \/tmp/);
-  assert.equal(await input.evaluate((el) => getComputedStyle(el).fontSize), '16px');
+  assert.equal(await input.evaluate((el) => getComputedStyle(el).fontSize), '28px');
   console.log(
     'PASS visible character-by-character command, full prompt, and link execution after cd',
   );
@@ -218,7 +236,7 @@ try {
   await page.getByRole('link', { name: 'Career', exact: true }).first().click();
   await input.press('Escape');
   await page.waitForFunction(
-    () => !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
+    () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
   );
   assert.equal(await input.inputValue(), 'echo keep-my-draft');
   await input.fill('');
@@ -281,6 +299,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   assert.match(await run('cat ~/notes/new.txt'), /persistent/);
@@ -308,6 +327,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   assert.match(await page.locator('#transcript .entry').last().innerText(), /paste-one\npaste-two/);
@@ -379,6 +399,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   assert.match(await run('cat /tmp/retained'), /retained/);
@@ -389,6 +410,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   await run('echo first > /tmp/conflict');
@@ -399,6 +421,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   assert.match(await second.locator('#status').innerText(), /another tab/);
@@ -418,6 +441,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   assert.equal(
@@ -441,6 +465,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   resetPage.once('dialog', (dialog) => dialog.accept());
@@ -450,6 +475,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   assert.equal((await rawPage.goto(base + '/tmp/retained'))?.status(), 404);
@@ -471,6 +497,7 @@ try {
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   await mobile.screenshot({ path: '.artifacts/mobile.png', fullPage: true });

@@ -183,3 +183,96 @@ Use `left` or `right` to wrap text around the image, or `center` to center it.
 Width alone also works. Images always shrink to fit their container; floated
 images stack above the text on screens up to 520px wide. Ordinary image titles
 remain tooltips.
+
+## CRT experiment
+
+The `experiment/crt` branch adds scanlines, a subtle phosphor texture, edge
+shading, highlight bloom, and viewport-wide barrel distortion
+that simulates curved glass. Bloom affects images and Vim as well as
+text. Effects are limited to the visible screen, with a faint refresh band
+travelling from top to bottom every eight seconds. Reduced motion disables the band.
+The terminal scrolls inside the screen, so the curve stays fixed as content moves. A pixel-style
+mouse pointer is drawn inside the same CRT layer, beneath the scanlines, using
+the same coordinates as the elements it points to. Mouse movement updates at most once per frame;
+touch input uses no custom pointer. Turning CRT off restores the native cursor.
+The footer's
+`crt: on/off` button remembers the setting in this browser. Scanlines and the refresh band stay anchored to the viewport while content scrolls. Overlay layers never intercept input;
+the displacement map is generated once, and the filter stays viewport-sized.
+
+CRT mode uses WebPlus IBM VGA 8x16 by VileR, a pixel-outline reproduction of
+classic BIOS/VGA text-mode characters, at the existing responsive text size.
+Vim uses the same font. The self-hosted webfont is 23 KB and includes extended
+Unicode characters for accented text. The original font is distributed unchanged
+under CC BY-SA 4.0; license and attribution are in `public/assets/IBM-VGA-*`.
+[Font source](https://int10h.org/oldschool-pc-fonts/).
+Turning CRT off restores Ubuntu Mono at 16px.
+
+Run `bun run dev` to preview it locally. This branch builds and tests in GitHub
+Actions but cannot publish deployment releases; only pushes to master can do that.
+
+Local Markdown images reserve their intrinsic aspect ratio before loading; the
+build reads dimensions from PNG, JPEG, GIF, WebP, AVIF, and SVG files. For remote
+images, provide dimensions in the title, such as `"width=800 height=450"`.
+The optional `align=left`, `align=right`, or `align=center` follows the dimensions.
+
+## Compressed assets
+
+The build writes maximum-compression gzip and Brotli variants of text assets.
+`deploy/nginx/experiment.panicek.sk.conf` serves Brotli JavaScript when the browser
+advertises `br`, and static gzip otherwise when accepted. Plain responses remain
+available. Compression preserves the complete shell and its tools; the worker is
+about 305 KB over Brotli or 382 KB over gzip, versus 1.34 MB uncompressed.
+Tests check decompressed bytes and enforce 350 KB Brotli / 450 KB gzip budgets.
+
+The experiment nginx host enables HTTP/2 and HTTP/3 on TCP/UDP port 443 and
+advertises HTTP/3 using `Alt-Svc`. These protocols multiplex concurrent asset
+requests; clients retain HTTP/1.1 fallback. The main portfolio host is also
+configured for HTTP/2 and HTTP/3 on the server.
+
+## Social previews
+
+Static Open Graph and Twitter/X card metadata includes a 1200×630 PNG preview,
+image dimensions and alt text, title, description, and canonical URL. Crawlers do
+not need JavaScript. The preview uses the existing portrait and terminal styling;
+it adds no image request to normal page startup.
+
+Build with `SITE_ORIGIN=https://experiment.panicek.sk bun run build` for the
+experiment host. The default is `https://panicek.sk`. Canonical, social, sitemap,
+and discovery URLs use this origin. Regenerate the committed preview asset with
+`bun scripts/social-card.ts` after installing Playwright Chromium; set
+`CHROMIUM_PATH` when using an existing browser installation.
+
+## Visitor counter
+
+The static client sends a random UUID stored in `portfolio:visitor` in localStorage
+once per page load to `POST /api/visit`. The footer displays the unique browser
+count. Clearing storage, private browsing, and other devices create new identities;
+this is not a count of distinct people. JavaScript-disabled visits are not counted.
+If storage or the collector is unavailable, the terminal continues normally.
+
+Nginx proxies this endpoint to a small Bun executable bound to `127.0.0.1:4381`.
+Build it with `bun run build:visitors`. Install it as
+`/usr/local/lib/panicek/visitors` and install `deploy/panicek-visitors.service` into
+`/etc/systemd/system/`, then enable it with `systemctl enable --now panicek-visitors`.
+The nginx endpoint and rate limit are in `deploy/nginx/experiment.panicek.sk.conf`.
+The service accepts only configured `VISITOR_ORIGINS`: the main and experiment domains.
+Each domain has its own visitor count. For the main site, install
+`deploy/nginx/portfolio-http.conf` in `/etc/nginx/conf.d/` and
+`deploy/nginx/portfolio-locations.conf` in `/etc/nginx/snippets/`, including the latter
+inside the apex server block. Enable `gzip_static on` and include `text/javascript`
+in its `gzip_types` so precompressed JavaScript is served correctly.
+
+SQLite lives outside the website at `/var/lib/panicek-visitors/visitors.sqlite`.
+Each `(site, id)` row stores first/last UTC timestamps, page-load count, latest
+client IP, user-agent, Accept-Language, page path, and referrer. Query strings and
+fragments are excluded. Nginx overwrites the IP header; SQL uses bound parameters.
+Only the aggregate count is returned publicly. Origin checks and rate limiting
+reduce casual abuse, but client-generated IDs are not proof of a real person.
+Records remain until deleted by the administrator.
+
+Inspect records over SSH:
+
+```sh
+sqlite3 -header -column /var/lib/panicek-visitors/visitors.sqlite 'SELECT * FROM visitors ORDER BY last_seen DESC LIMIT 20;'
+sqlite3 /var/lib/panicek-visitors/visitors.sqlite 'SELECT site, count(*) FROM visitors GROUP BY site;'
+```

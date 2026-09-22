@@ -1,66 +1,117 @@
 # Career
 
-My professional work started in 2014 with web applications and business
-software. Payment systems came next, followed by embedded development.
-Firmware and backends are both still part of the day job.
+## Ciklum
 
-## Embedded work
+### Expert Embedded Software Engineer
 
-At Ciklum, the work covers development, code review, and testing for consumer
-electronics and IoT: C, C++, Rust, and Python on ESP32 and STM hardware.
-My current role, Expert Embedded Software Engineer, also includes mentoring,
-planning, and talking through technical decisions with customers.
+January 2026 – present
 
-Personal projects connect devices, a Rust server, and simulated hardware over
-MQTT, using event sourcing to keep track of state.
-Much of the interesting work starts when something goes wrong: a device
-restarts, a message arrives twice, or part of the event history is missing.
+Mentoring engineers, exploring new technologies, and helping teams work through
+technical roadblocks. The role also includes interviews, technical discussions
+with customers, conference talks, and project planning.
 
-The electronics get attention too, with schematics and PCB layouts in KiCad.
-Device-control work includes Web Bluetooth, BLE GATT, and HomeKit pairing
-and authenticated sessions. WebAssembly on ESP32 brings a different set of
-questions: how to run portable code within a microcontroller's constraints.
+Technologies: Rust, C#, ESP32, STM.
 
-## Backends and payments
+### Senior Embedded Software Engineer
 
-At PixelFederation, I helped build a mobile payment-processing system in PHP,
-using domain-driven design, CQRS, and event sourcing. Work at Ferratum focused
-on loan accounting; at Superfaktura, on invoicing software, database
-performance, and Linux administration.
+March 2024 – December 2025
 
-Earlier projects included a B2B shop connected to warehouse stock, pricing,
-and accounting documents. Freelance work through Modus Operandi continues
-with billing, custom backends, and IoT, alongside service migrations, Redis
-optimization, and security fixes.
+Developing, reviewing, and testing software for consumer electronics and IoT
+devices, alongside coaching junior engineers and speaking at conferences.
 
-## Computer vision and machine learning
+Technologies: C, C++, Rust, Python, ESP32, STM.
 
-Document-processing tools combine Rust and OpenCV to detect page contours,
-correct perspective, read barcodes, and extract regions from scanned sheets.
-For mark recognition, ONNX neural-network models run through OpenCV's DNN
-module, producing classifications and confidence scores.
+## Modus Operandi s.r.o.
 
-The surrounding pipeline includes PDF rasterization with MuPDF and image
-preprocessing. The work covers both the model inference and the code needed
-to feed it useful images and turn its output into structured results.
+### Freelance Senior Software Engineer
 
-## Simulation and practical tools
+March 2022 – present
 
-Game experiments use Bevy's entity-component system and Avian rigid-body
-physics in Rust. A separate tabletop rules engine simulates encounters to
-help test card mechanics and balance.
+Billing and payment processing, custom backends, containerization, and IoT
+solutions through my own company.
 
-Smaller tools for my own use sit alongside the larger projects: offline maps,
-sensor dashboards, and everyday automation.
+Technologies: TypeScript, C++, C#, AWS, ESP32, Elasticsearch, MQTT, PHP.
 
-## Teaching
+### Websupport
 
-Teaching C, Java, PHP, and HTML at IT Academy was an early opportunity to
-spend time on the explanations as well as the code. That continues through
-mentoring and talks. A good question from someone else can reveal a gap in
-your own understanding surprisingly quickly.
+November 2022 – February 2024
 
-Some of my work is on [GitHub](https://github.com/adrianpanicek).
-For project enquiries, [get in touch](CONTACTS.md).
+Backend development for internal service-migration tools, from domain-driven
+design to Redis optimization. Shared experience with the team to improve
+backend code standards.
 
-[Back to the introduction](ABOUT.md)
+### eFabrica
+
+March 2022 – November 2022
+
+Backend development with Nette, including identifying and fixing critical
+security vulnerabilities in the codebase.
+
+## PixelFederation
+
+### Senior Backend Developer
+
+March 2018 – December 2021
+
+Co-developed a mobile payment-processing system using domain-driven design,
+CQRS, and event sourcing in PHP. The work covered payment handling, software
+architecture, and maintaining the codebase.
+
+Technologies: PHP, TypeScript, DDD, CQRS, event sourcing, AWS, Fluentd, Kibana,
+Prometheus, Elasticsearch, React, Webpack.
+
+## Ferratum Group
+
+### Backend Developer / DevOps Engineer
+
+April 2017 – March 2018
+
+Developed a bank loan-accounting system and helped modernize the infrastructure
+with DevOps practices and tooling.
+
+Technologies: PHP, Kubernetes, Redis, Docker, Fluentd, static analysis.
+
+## Superfaktura
+
+### Full Stack Developer
+
+April 2016 – April 2017
+
+Invoicing and accounting software, database optimization, and Linux
+administration. The role also involved direct customer support and translating
+business requirements into working software.
+
+Technologies: PHP, MySQL, Elasticsearch, Linux.
+
+## IT Academy
+
+### Programming Lecturer
+
+March 2016 – June 2017
+
+Part-time teaching of C, Java, PHP, and HTML. An early opportunity to build the
+presentation and teaching skills that still come into play in mentoring and talks.
+
+## Adrián Paníček – Citron
+
+### Freelancer
+
+December 2014 – June 2017
+
+Web administration, CMS plugins and integrations, server migrations, and custom
+software solutions.
+
+Technologies: Nette, MSSQL, database optimization, frontend development.
+
+## Metrumservis
+
+### Lead Developer
+
+January 2014 – January 2015
+
+Built a B2B shop with warehouse integration for stock and pricing, accounting
+documents, and customer-specific pricing across international markets.
+
+Technologies: PHP, Nette, warehouse and accounting integrations.
+
+[GitHub](https://github.com/adrianpanicek) · [Contacts](CONTACTS.md) · [About](ABOUT.md)

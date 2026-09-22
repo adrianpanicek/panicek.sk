@@ -1,0 +1,19 @@
+[Unit]
+Description=Portfolio SQLite visitor counter
+After=network.target
+
+[Service]
+DynamicUser=yes
+StateDirectory=panicek-visitors
+ExecStart=/usr/local/lib/panicek/visitors
+Environment=VISITOR_ORIGINS=https://panicek.sk,https://experiment.panicek.sk
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

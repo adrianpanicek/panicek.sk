@@ -15,7 +15,16 @@ passes `/temp`, `/mqtt`, and `/.well-known` requests through to the server.
 
 Markdown/text files are served as UTF-8 plain text. Assets use revalidation
 (`Cache-Control: no-cache`) because bundle filenames are stable. nginx compresses
-text assets. No Bun or application server is needed in production.
+text assets. The site itself remains static; the visitor counter uses the separate
+`panicek-visitors` service backed by SQLite. Its compiled Bun executable and systemd
+unit are installed manually, independently of the static artifact updater.
+Both `panicek.sk` and `experiment.panicek.sk` are accepted origins, with separate counts.
+The database is `/var/lib/panicek-visitors/visitors.sqlite` and remains outside releases.
+
+The apex server includes `/etc/nginx/snippets/portfolio-locations.conf` for the
+visitor endpoint and precompressed JavaScript. `/etc/nginx/conf.d/portfolio-http.conf`
+defines its rate-limit zone and Brotli negotiation maps. Both are versioned in
+`deploy/nginx/`. Static gzip is enabled, with `text/javascript` included in gzip types.
 
 For subsequent deployments, build with Bun, upload `dist/` into a new release
 directory, then atomically replace the `current` symlink. Retain the previous

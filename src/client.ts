@@ -1,3 +1,5 @@
+import { setupCrt } from './crt';
+import { countVisitor } from './visitors';
 import { commandRanges, highlightCommand } from './highlight';
 import { decodeContactTokens } from './contacts';
 import { typeText } from './typing';
@@ -5,6 +7,9 @@ import { renderMarkdown, escapeHtml } from './markdown';
 import { catCommand, displayCat, displayPath, HOME } from './paths';
 import { resetState } from './storage';
 import type { BaseFiles } from './filesystem';
+
+setupCrt();
+void countVisitor();
 
 const transcript = document.querySelector<HTMLElement>('#transcript')!;
 const form = document.querySelector<HTMLFormElement>('#command-form')!;
@@ -55,9 +60,8 @@ function setStatus(message: string, warning = false) {
   status.classList.toggle('warning', warning);
 }
 function availability() {
-  input.disabled = !ready || busy || editing;
-  input.readOnly = Boolean(typing);
-  form.setAttribute('aria-busy', String(busy || typing));
+  input.disabled = !ready || editing;
+  form.setAttribute('aria-busy', String(Boolean(busy || typing)));
   stop.hidden = !busy && !typing;
   prompt.textContent = displayPath(cwd);
   document.querySelector('#exit-status')!.textContent = lastExit ? `[${lastExit}] ` : '';
@@ -386,6 +390,9 @@ form.addEventListener('submit', (event) => {
   void run(input.value);
 });
 input.addEventListener('input', paintInput);
+input.addEventListener('beforeinput', (event) => {
+  if (typing) event.preventDefault();
+});
 input.addEventListener('select', paintHighlight);
 input.addEventListener('keyup', paintHighlight);
 input.addEventListener('click', paintHighlight);
@@ -398,10 +405,15 @@ input.addEventListener('scroll', () => {
 });
 input.addEventListener('keydown', (event) => {
   if (typing) {
+    event.preventDefault();
     if (event.key === 'Escape') {
       event.preventDefault();
       interrupt();
     }
+    return;
+  }
+  if (busy && ['Enter', 'Tab', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+    event.preventDefault();
     return;
   }
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {

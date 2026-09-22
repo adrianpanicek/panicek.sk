@@ -162,3 +162,20 @@ test('Markdown image layout accepts bounded sizes and named alignments', () => {
   expect(image('width=160 align=evil')).not.toContain('class=');
   expect(renderMarkdown('![Photo](photo.jpg)', '/tmp/a.md')).not.toContain('style=');
 });
+
+test('Markdown reserves local and explicitly sized remote images before loading', () => {
+  const local = renderMarkdown(
+    '![Portrait](portrait.png "width=224 align=right")',
+    '/home/web/ABOUT.md',
+    'https://panicek.sk',
+    { '/home/web/portrait.png': { width: 400, height: 400 } },
+  );
+  expect(local).toContain('width="400" height="400"');
+  expect(local).toContain('style="width:224px"');
+  expect(local).toContain('class="image-right"');
+  const remote = renderMarkdown(
+    '![Landscape](https://example.com/photo.jpg "width=800 height=450")',
+    '/home/web/ABOUT.md',
+  );
+  expect(remote).toContain('width="800" height="450"');
+});

@@ -11,7 +11,11 @@ try {
   const page = await context.newPage();
   await page.goto(process.env.TEST_URL || 'http://127.0.0.1:4321');
   const ready = () =>
-    page.waitForFunction(() => !document.querySelector<HTMLTextAreaElement>('#command')?.disabled);
+    page.waitForFunction(
+      () =>
+        !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&
+        document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
+    );
   await ready();
   const run = async (text: string) => {
     await page.locator('#command').fill(text);

@@ -1,3 +1,5 @@
+@use 'crt';
+
 @font-face {
   font-family: Ubuntu Mono;
   src: url('/assets/ubuntu-mono-latin-ext-400-normal.woff2') format('woff2');
@@ -242,6 +244,7 @@ footer {
 footer a,
 footer button {
   color: var(--muted);
+  text-decoration: none;
 }
 button {
   font: inherit;
@@ -402,7 +405,6 @@ textarea#command {
   font-weight: 700;
 }
 
-/* A single steady block follows the real textarea selection and scroll position. */
 .block-caret {
   display: inline-block;
   position: relative;
@@ -421,6 +423,23 @@ textarea#command {
   background: var(--bright);
   mix-blend-mode: difference;
   pointer-events: none;
+  animation: cursor-blink 1s steps(1, end) infinite;
+}
+
+@keyframes cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block-caret::after {
+    animation: none;
+  }
 }
 
 .input-wrap:has(textarea:disabled) .block-caret {

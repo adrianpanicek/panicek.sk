@@ -1,0 +1,7 @@
+WebPlus IBM VGA 8x16 by VileR, from The Ultimate Oldschool PC Font Pack v2.2.
+https://int10h.org/oldschool-pc-fonts/
+Licensed under Creative Commons Attribution-ShareAlike 4.0 International.
+https://creativecommons.org/licenses/by-sa/4.0/
+Original font file distributed without modification.
+The Plus variant preserves the IBM VGA glyphs and adds extended Unicode coverage.
+See IBM-VGA-LICENSE.txt for the full license.

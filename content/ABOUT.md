@@ -1,6 +1,6 @@
 # Adrián Paníček
 
-![Portrait of Adrián Paníček](portrait.png "width=160 align=right")
+![Portrait of Adrián Paníček](portrait.png "width=224 align=right")
 
 I'm a developer from Slovakia. You can usually find me somewhere between
 software and electronics, writing code or figuring out how something works.
