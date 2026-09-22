@@ -1,6 +1,6 @@
 import { compile } from 'sass';
 import { expect, test } from 'bun:test';
-import { readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { brotliDecompressSync } from 'node:zlib';
 import { imageSize } from 'image-size';
 test('build contains prerendered content, raw bytes, shortcuts and discovery metadata', async () => {
@@ -11,6 +11,7 @@ test('build contains prerendered content, raw bytes, shortcuts and discovery met
   expect(html).toContain('application/ld+json');
   expect(html).toContain('rel="canonical"');
   for (const name of await readdir('content')) {
+    if ((await stat(`content/${name}`)).isDirectory()) continue;
     const original = await Bun.file(`content/${name}`).text();
     expect(await Bun.file(`dist/home/web/${name}`).text()).toBe(original);
     expect(await Bun.file(`dist/~/${name}`).text()).toBe(original);
@@ -109,4 +110,22 @@ test('Doom ships as a separate compressed application outside the portfolio file
   expect(new Uint8Array(brotliDecompressSync(compressed))).toEqual(
     await Bun.file('vendor/doom/doom.wasm').bytes(),
   );
+});
+
+test('startup contains shallow directory markers and symlinks without nested page bodies', async () => {
+  const text = await Bun.file('dist/filesystem.json').text();
+  const startup = JSON.parse(text);
+  expect(startup['/blog']).toEqual({ target: '/home/web/blog' });
+  expect(startup['/home/web/blog']).toEqual({ directory: true });
+  expect(startup['/home/web/blog/INDEX.md']).toBeUndefined();
+  expect(text).not.toContain('No posts yet.');
+  const snapshot = await Bun.file('dist/snapshot.json').json();
+  expect(snapshot['/home/web/blog/INDEX.md']).toBeUndefined();
+  expect(atob(snapshot['/llms-full.txt'].data)).not.toContain('No posts yet.');
+  expect(await Bun.file('dist/_files/home/web/blog/INDEX.md').text()).toContain('# Blog');
+  expect(await Bun.file('dist/blog/index.html').text()).toContain('/assets/client.js');
+});
+
+test('raw URL service worker stays small without bundling the shell engine', () => {
+  expect(Bun.file('dist/service-worker.js').size).toBeLessThan(50000);
 });

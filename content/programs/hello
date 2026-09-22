@@ -1,0 +1,2 @@
+#!/usr/bin/env browser-js
+api.print(`Hello, ${api.args[0] || 'world'}!`);

@@ -4,7 +4,7 @@ import { commandRanges, highlightCommand } from './highlight';
 import { decodeContactTokens } from './contacts';
 import { typeText } from './typing';
 import { renderMarkdown, escapeHtml } from './markdown';
-import { catCommand, displayCat, displayPath, HOME } from './paths';
+import { catCommand, displayCat, displayPath, HOME, rawPath, quote } from './paths';
 import { resetState } from './storage';
 import type { BaseFiles } from './filesystem';
 import { createApplicationController } from './applications';
@@ -83,7 +83,8 @@ function setStatus(message: string, warning = false) {
 function availability() {
   input.disabled = !ready || editing || applications.state !== 'idle';
   form.setAttribute('aria-busy', String(Boolean(busy || typing)));
-  stop.hidden = applications.state !== 'idle' || (!busy && !typing);
+  stop.hidden =
+    (applications.state !== 'idle' && !applications.interruptible) || (!busy && !typing);
   prompt.textContent = displayPath(cwd);
   document.querySelector('#exit-status')!.textContent = lastExit ? `[${lastExit}] ` : '';
 }
@@ -216,6 +217,13 @@ function boot() {
         transcript.replaceChildren();
         for (const result of message.startup) output(commandBlock(result.command, HOME), result);
         initial = false;
+        if (location.pathname !== '/' && location.pathname !== '/index.html') {
+          try {
+            void run('render ' + quote(rawPath(location.pathname)));
+          } catch (error) {
+            setStatus(String(error), true);
+          }
+        }
       }
       setStatus(message.warning || 'web · files stay in this browser', Boolean(message.warning));
       availability();
@@ -239,12 +247,32 @@ function boot() {
       if (message.editor) void launchEditor(message.editor);
       pruneScrollback();
       setStatus(message.warning || 'web · files stay in this browser', Boolean(message.warning));
+      let programOutput: HTMLPreElement | undefined;
+      let programError = false;
       if (message.application)
-        void applications.launch(message.application, (error) => {
-          if (block) plain(block, error + '\n', true);
-          lastExit = 1;
-          busy = false;
-        });
+        void applications.launch(
+          message.application,
+          (error) => {
+            if (block) plain(block, error + '\n', true);
+            lastExit = 1;
+            busy = false;
+          },
+          (text, error) => {
+            if (block && text) {
+              if (!programOutput || programError !== error) {
+                programOutput = document.createElement('pre');
+                programOutput.className = error ? 'output error' : 'output';
+                block.append(programOutput);
+                programError = error;
+              }
+              const clean = text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '');
+              if (programOutput.firstChild instanceof Text)
+                programOutput.firstChild.appendData(clean);
+              else programOutput.textContent = clean;
+              pruneScrollback();
+            }
+          },
+        );
       availability();
       input.focus({ preventScroll: true });
       scrollToPrompt();
@@ -327,7 +355,10 @@ async function launchEditor(file: { path: string; text: string; isNew: boolean }
   }
 }
 function interrupt() {
-  if (applications.state !== 'idle') return;
+  if (applications.state !== 'idle') {
+    applications.interrupt();
+    return;
+  }
   if (typing) {
     typing.abort();
     return;
@@ -471,7 +502,7 @@ input.addEventListener('keydown', (event) => {
   }
 });
 document.addEventListener('keydown', (event) => {
-  if (editing || applications.state !== 'idle') return;
+  if (editing || (applications.state !== 'idle' && !applications.interruptible)) return;
   if (event.ctrlKey && event.key.toLowerCase() === 'c' && !window.getSelection()?.toString()) {
     if (busy || typing) {
       event.preventDefault();
@@ -502,7 +533,7 @@ document.addEventListener('click', (event) => {
   event.preventDefault();
   if (!busy && !typing)
     void animatedRun(
-      catCommand(anchor.dataset.file!) + ' | render',
+      'render ' + quote(anchor.dataset.file!),
       displayCat(anchor.dataset.file!) + ' | render',
     );
 });

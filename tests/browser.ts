@@ -297,7 +297,12 @@ try {
   await rawPage.goto(base + '/tmp/notes/new.txt');
   assert.equal((await rawPage.locator('body').innerText()).trim(), 'persistent');
   await rawPage.goto(base + '/~/notes/');
-  assert.match(await rawPage.locator('body').innerText(), /\/home\/web\/notes\/new.txt/);
+  await rawPage.waitForFunction(() =>
+    document
+      .querySelector('#transcript .entry:last-child .output')
+      ?.textContent?.includes('new.txt'),
+  );
+  assert.match(await rawPage.locator('#transcript .entry').last().innerText(), /new.txt/);
   await page.reload();
   await page.waitForFunction(
     () =>

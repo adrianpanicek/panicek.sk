@@ -3,11 +3,12 @@ import { imageSize } from 'image-size';
 import { brotliCompressSync, constants } from 'node:zlib';
 import { minify } from 'html-minifier-terser';
 import { SYSTEM_FILES } from '../src/downloads';
-import { mkdir, rm, cp, readdir } from 'node:fs/promises';
+import { mkdir, rm, cp, readdir, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { renderMarkdown, escapeHtml } from '../src/markdown';
 import { encode } from '../src/bytes';
 import { createFilesystem, snapshot, type BaseFiles } from '../src/filesystem';
+import { validRemoteName } from '../src/remote-filesystem';
 import { HOME, ORIGIN as DEFAULT_ORIGIN, hrefFor } from '../src/paths';
 
 const site = new URL(process.env.SITE_ORIGIN || DEFAULT_ORIGIN);
@@ -33,12 +34,44 @@ await Bun.write(
   `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`,
 );
 const files: BaseFiles = {};
+const directories: string[] = [];
+const aliases: Record<string, { target: string }> = { '/~': { target: HOME } };
 const imageDimensions: Record<string, { width: number; height: number }> = {};
 async function walk(dir: string, prefix = '') {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (!validRemoteName(entry.name) || entry.name.startsWith('.'))
+      throw new Error(`Unsafe content name: ${entry.name}`);
+    if (entry.isSymbolicLink())
+      throw new Error(`Content symlinks are not allowed: ${dir}/${entry.name}`);
     const relative = prefix + entry.name;
-    if (entry.isDirectory()) await walk(join(dir, entry.name), relative + '/');
-    else if (entry.isFile()) {
+    if (entry.isDirectory()) {
+      directories.push(`${HOME}/${relative}`);
+      await mkdir(join(out, '_files', HOME, relative), { recursive: true });
+      if (!prefix) {
+        if (
+          [
+            'assets',
+            'api',
+            'home',
+            'usr',
+            'bin',
+            'etc',
+            'dev',
+            'proc',
+            'sys',
+            'tmp',
+            'temp',
+            'mqtt',
+            '_files',
+            '~',
+            '.well-known',
+          ].includes(entry.name)
+        )
+          throw new Error(`Reserved shortcut: ${entry.name}`);
+        aliases['/' + entry.name] = { target: HOME + '/' + entry.name };
+      }
+      await walk(join(dir, entry.name), relative + '/');
+    } else if (entry.isFile()) {
       const bytes = new Uint8Array(await Bun.file(join(dir, entry.name)).arrayBuffer());
       if (/\.(png|jpe?g|gif|webp|avif|svg)$/i.test(entry.name)) {
         const { width, height } = imageSize(bytes);
@@ -52,6 +85,7 @@ async function walk(dir: string, prefix = '') {
         content = { base64: encode(bytes) };
       }
       files[`${HOME}/${relative}`] = content;
+      await Bun.write(join(out, '_files', HOME, relative), bytes);
       await Bun.write(join(out, HOME, relative), bytes);
       await Bun.write(join(out, '~', relative), bytes);
     }
@@ -86,15 +120,28 @@ await Bun.write(
   join(out, 'llms-full.txt'),
   contactDecoding +
     '\n' +
-    markdownPaths.map((path) => `<!-- ${path} -->\n\n${textFile(path)}`).join('\n\n'),
+    discovery +
+    '\n' +
+    markdownPaths
+      .filter((path) => !path.startsWith(HOME + '/') || !path.slice(HOME.length + 1).includes('/'))
+      .map((path) => `<!-- ${path} -->\n\n${textFile(path)}`)
+      .join('\n\n'),
 );
 await Bun.write(join(out, 'files.json'), JSON.stringify(published, null, 2) + '\n');
 for (const path of ['robots.txt', 'llms.txt', 'llms-full.txt', 'sitemap.xml', 'files.json'])
   files['/' + path] = await Bun.file(join(out, path)).text();
-await Bun.write(join(out, 'filesystem.json'), JSON.stringify(files));
+const startup: BaseFiles = Object.fromEntries(
+  Object.entries(files).filter(
+    ([path]) => !path.startsWith(HOME + '/') || !path.slice(HOME.length + 1).includes('/'),
+  ),
+);
+for (const path of directories.filter((path) => !path.slice(HOME.length + 1).includes('/')))
+  startup[path] = { directory: true };
+Object.assign(startup, aliases);
+await Bun.write(join(out, 'filesystem.json'), JSON.stringify(startup));
 await Bun.write(
   join(out, 'snapshot.json'),
-  JSON.stringify(await snapshot(await createFilesystem(files))),
+  JSON.stringify(await snapshot(await createFilesystem(startup))),
 );
 for (const weight of [400, 700])
   for (const subset of ['latin', 'latin-ext']) {
@@ -112,6 +159,7 @@ await Bun.write(
 for (const [entry, output] of [
   ['src/client.ts', 'assets/client.js'],
   ['src/vim.ts', 'assets/vim.js'],
+  ['src/program.ts', 'assets/program.js'],
   ['src/doom/index.ts', 'assets/doom/app.js'],
   ['src/shell.worker.ts', 'assets/shell.worker.js'],
   ['src/service-worker.ts', 'service-worker.js'],
@@ -204,11 +252,25 @@ await Bun.write(
     removeComments: true,
   }),
 );
+// Physical shortcuts contain only generated, in-tree targets. Remote data contains no symlinks.
+for (const [path, { target }] of Object.entries(aliases)) {
+  if (path === '/~') continue;
+  await symlink('.' + target, join(out, path));
+}
+for (const path of [
+  ...directories,
+  HOME,
+  '/~',
+  ...directories.map((path) => '/~' + path.slice(HOME.length)),
+]) {
+  await Bun.write(join(out, path, 'index.html'), await Bun.file(join(out, 'index.html')).bytes());
+}
 console.log(
   `Built ${published.length} portfolio files, raw home paths, metadata, and browser bundles in dist/`,
 );
 
 for (const path of new Bun.Glob('**/*').scanSync({ cwd: out, onlyFiles: true })) {
+  if (path.startsWith('_files/')) continue;
   if (!/\.(js|css|json|html|svg|txt|md|xml|wasm)$/.test(path)) continue;
   const bytes = new Uint8Array(await Bun.file(join(out, path)).arrayBuffer());
   if (bytes.length < 1024) continue;

@@ -10,7 +10,7 @@ type ShellExecResult = BashExecResult & {
   application?: ApplicationRequest;
 };
 
-export const HELP = `Explore the portfolio\n\n  cat ~/ABOUT.md | render   About me\n  cat ~/CAREER.md | render  Career history\n  cat ~/CONTACTS.md | render  Get in touch\n  cat ~/portrait.txt  ASCII portrait\n  save <files...>    Download files (/usr/sbin/save)\n  vim <file>, vi      Edit a file (:w, :q, :wq)\n  ls, cd, pwd, find    Explore files\n  grep, sort, sed      Work with text and pipes\n  help                Show this help\n  clear               Clear the transcript\n  reset               Restore the published files\n\nTab completes paths. Shift+Enter adds a line; Enter runs it. Paste never auto-runs.\nUp/down browse history. Ctrl+C interrupts.\nEdits stay in this browser. Output is plain text. Pipe into render for Markdown and images. Markdown links run cat | render.\nOpen /~/CAREER.md in your address bar to read a raw file.\n`;
+export const HELP = `Explore the portfolio\n\n  cat ~/ABOUT.md | render   About me\n  cat ~/CAREER.md | render  Career history\n  cat ~/CONTACTS.md | render  Get in touch\n  cat ~/portrait.txt  ASCII portrait\n  save <files...>    Download files (/usr/sbin/save)\n  vim <file>, vi      Edit a file (:w, :q, :wq)\n  ls, cd, pwd, find    Explore files\n  grep, sort, sed      Work with text and pipes\n  ./programs/hello    Run a browser executable\n  ./programs/counter.js  Open an interactive program\n  help                Show this help\n  clear               Clear the transcript\n  reset               Restore the published files\n\nTab completes paths. Shift+Enter adds a line; Enter runs it. Paste never auto-runs.\nUp/down browse history. Ctrl+C interrupts.\nEdits stay in this browser. Output is plain text. Pipe into render for Markdown and images. Markdown links run cat | render.\nOpen /~/CAREER.md in your address bar to read a raw file.\n`;
 export function createShell(fs: IFileSystem) {
   let cwd = HOME;
   let env: Record<string, string> = {
@@ -87,11 +87,22 @@ export function createShell(fs: IFileSystem) {
             };
           try {
             const paths = [...new Set(reads)];
-            const path = args.length
+            let path = args.length
               ? ctx.fs.resolvePath(ctx.cwd, args[0])
               : paths.length === 1
                 ? ctx.fs.resolvePath(ctx.cwd, paths[0])
                 : ctx.cwd + '/.terminal-output.md';
+            if (args.length && (await ctx.fs.stat(path)).isDirectory) {
+              const directory = await ctx.fs.realpath(path);
+              if (!(await ctx.fs.exists(directory + '/INDEX.md'))) {
+                return {
+                  stdout: (await ctx.fs.readdir(directory)).sort().join('\n') + '\n',
+                  stderr: '',
+                  exitCode: 0,
+                };
+              }
+              path = directory + '/INDEX.md';
+            }
             const text = args.length
               ? await ctx.fs.readFile(path)
               : new TextDecoder().decode(

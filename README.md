@@ -60,13 +60,21 @@ canonical/social metadata, Person JSON-LD, and a terminal favicon. The sitemap a
 agent index are generated from current Markdown files. The original CV and
 editorial documents are not published. Ubuntu Mono is bundled with its license.
 
+## Browser executables
+
+Run `./programs/hello "your name"` or `./programs/counter.js` in the terminal.
+JavaScript and raw Wasm files run locally with terminal output and optional UI.
+See [the executable API and Wasm ABI](docs/executables.md) for authoring,
+permissions, isolation and current shell limitations.
+
 ## Filesystem URLs
 
 - `/home/web/CAREER.md`: absolute virtual path.
 - `/~/CAREER.md`: home expansion for user `web`.
 - `/~/notes/example.txt`: nested home file.
 - `/tmp/example.txt`: any ordinary file created outside home.
-- `/home/web/`: plain-text directory listing after service worker activation.
+- Directory URLs: render `INDEX.md` in the terminal, or list entries when it is absent.
+- `/blog/`: a shortcut to `/home/web/blog/`; top-level content directories get matching shortcuts.
 
 The service worker resolves filesystem paths, including symlinks, using the same
 persisted data as the shell. Files edited or created in this browser are visible
@@ -82,7 +90,7 @@ requests; use the normalized absolute paths shown in directory listings.
 `EXPERIENCE.md` is not an alias; the real career filename is `CAREER.md`.
 
 `/` and `/index.html` remain the portfolio. `/assets/`, `/service-worker.js`,
-`/filesystem.json`, `/snapshot.json`, and `/favicon.svg` belong to the app and do
+`/filesystem.json`, `/snapshot.json`, `/_files/`, `/api/`, and `/favicon.svg` belong to the app and do
 not serve writable virtual files. `/dev`, `/proc`, and `/sys` pseudo-files are not
 persisted or published as raw files.
 
@@ -218,16 +226,13 @@ The optional `align=left`, `align=right`, or `align=center` follows the dimensio
 ## Compressed assets
 
 The build writes maximum-compression gzip and Brotli variants of text assets.
-`deploy/nginx/experiment.panicek.sk.conf` serves Brotli JavaScript when the browser
-advertises `br`, and static gzip otherwise when accepted. Plain responses remain
+The server negotiates Brotli or gzip when supported by the browser. Plain responses remain
 available. Compression preserves the complete shell and its tools; the worker is
 about 305 KB over Brotli or 382 KB over gzip, versus 1.34 MB uncompressed.
 Tests check decompressed bytes and enforce 350 KB Brotli / 450 KB gzip budgets.
 
-The experiment nginx host enables HTTP/2 and HTTP/3 on TCP/UDP port 443 and
-advertises HTTP/3 using `Alt-Svc`. These protocols multiplex concurrent asset
-requests; clients retain HTTP/1.1 fallback. The main portfolio host is also
-configured for HTTP/2 and HTTP/3 on the server.
+The portfolio host enables HTTP/2 and HTTP/3 on TCP/UDP port 443 and advertises
+HTTP/3 using `Alt-Svc`, with HTTP/1.1 fallback.
 
 ## Social previews
 
@@ -236,8 +241,8 @@ image dimensions and alt text, title, description, and canonical URL. Crawlers d
 not need JavaScript. The preview uses the existing portrait and terminal styling;
 it adds no image request to normal page startup.
 
-Build with `SITE_ORIGIN=https://experiment.panicek.sk bun run build` for the
-experiment host. The default is `https://panicek.sk`. Canonical, social, sitemap,
+The default site origin is `https://panicek.sk`; override it with `SITE_ORIGIN`
+when building for another deployment. Canonical, social, sitemap,
 and discovery URLs use this origin. Regenerate the committed preview asset with
 `bun scripts/social-card.ts` after installing Playwright Chromium; set
 `CHROMIUM_PATH` when using an existing browser installation.
@@ -250,29 +255,35 @@ count. Clearing storage, private browsing, and other devices create new identiti
 this is not a count of distinct people. JavaScript-disabled visits are not counted.
 If storage or the collector is unavailable, the terminal continues normally.
 
-Nginx proxies this endpoint to a small Bun executable bound to `127.0.0.1:4381`.
-Build it with `bun run build:visitors`. Install it as
-`/usr/local/lib/panicek/visitors` and install `deploy/panicek-visitors.service` into
-`/etc/systemd/system/`, then enable it with `systemctl enable --now panicek-visitors`.
-The nginx endpoint and rate limit are in `deploy/nginx/experiment.panicek.sk.conf`.
-The service accepts only configured `VISITOR_ORIGINS`: the main and experiment domains.
-Each domain has its own visitor count. For the main site, install
-`deploy/nginx/portfolio-http.conf` in `/etc/nginx/conf.d/` and
-`deploy/nginx/portfolio-locations.conf` in `/etc/nginx/snippets/`, including the latter
-inside the apex server block. Enable `gzip_static on` and include `text/javascript`
-in its `gzip_types` so precompressed JavaScript is served correctly.
+nginx handles the endpoint directly with njs; no standalone API process is needed.
+`deploy/njs/visitors.ts` validates requests and atomically increments a numeric
+shared-dictionary entry per UUID. The dictionary size is the unique-browser count.
+It retains IDs and visit totals, without collecting new IP, user-agent, path, or
+referrer records. The previous SQLite database remains archived for rollback.
 
-SQLite lives outside the website at `/var/lib/panicek-visitors/visitors.sqlite`.
-Each `(site, id)` row stores first/last UTC timestamps, page-load count, latest
-client IP, user-agent, Accept-Language, page path, and referrer. Query strings and
-fragments are excluded. Nginx overwrites the IP header; SQL uses bound parameters.
-Only the aggregate count is returned publicly. Origin checks and rate limiting
-reduce casual abuse, but client-generated IDs are not proof of a real person.
-Records remain until deleted by the administrator.
+Build the handler with `bun run build:visitors`. Its installation and nginx
+configuration are managed on the server, outside this repository. See
+[deployment notes](docs/deployment.md#nginx-native-visitor-counter).
 
-Inspect records over SSH:
+The 16 MiB dictionary has no expiry or eviction. Its state is persisted outside
+static releases at `/var/lib/nginx/portfolio-visitors/state.json`. njs writes updates
+asynchronously, approximately once per second; abrupt host failure can lose the
+latest unsaved updates. Normal reloads retain shared memory; restarts reload the
+state file. Capacity exhaustion returns 503 and leaves the terminal usable.
+Origin checks and nginx rate limits remain; client UUIDs are not proof of a person.
 
-```sh
-sqlite3 -header -column /var/lib/panicek-visitors/visitors.sqlite 'SELECT * FROM visitors ORDER BY last_seen DESC LIMIT 20;'
-sqlite3 /var/lib/panicek-visitors/visitors.sqlite 'SELECT site, count(*) FROM visitors GROUP BY site;'
-```
+Run `python3 tests/njs-nginx.py .artifacts/njs/visitors.js` on a host with compatible
+nginx/njs to test real concurrent requests, migration format, persistence, reloads,
+and restarts using an isolated Unix socket. Override `NGINX_PATH` and `NJS_MODULE`
+when installed outside the default paths.
+
+## Lazy directories
+
+Only immediate `/home/web/*` files and system files are included in startup data.
+Nested directories load from nginx JSON autoindex under `/_files/home/web/`, shared
+by shell commands, completion, the editor, downloads, and raw URLs. `ls` loads the
+queried directory without recursively fetching its children. `llms-full.txt` embeds
+immediate portfolio pages and links to nested pages, so it does not preload blog
+bodies indirectly. Doom JavaScript and Wasm load only when launching `DOOM`.
+See [deployment instructions](docs/deployment.md#directory-pages-and-lazy-content)
+for the hosting requirements and traversal protections.

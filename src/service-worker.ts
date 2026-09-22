@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 import type { Snapshot } from './filesystem';
-import { snapshotReader, readRaw } from './raw-files';
-import { applyOverlay } from './overlay';
+import { remoteSnapshot } from './remote-snapshot';
+import { readRaw, physicalPath } from './raw-files';
+import { rawPath } from './paths';
 import { loadState } from './storage';
 const sw = self as unknown as ServiceWorkerGlobalScope;
 let basePromise: Promise<Snapshot> | undefined;
@@ -24,6 +25,8 @@ sw.addEventListener('fetch', (event) => {
     url.pathname === '/' ||
     url.pathname === '/index.html' ||
     url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith('/_files/') ||
+    url.pathname.startsWith('/api/') ||
     ['/service-worker.js', '/filesystem.json', '/snapshot.json', '/favicon.svg'].includes(
       url.pathname,
     )
@@ -37,8 +40,11 @@ sw.addEventListener('fetch', (event) => {
       try {
         const base = await getBase();
         const state = await loadState();
-        const entries = applyOverlay(base, state.overlay);
-        const fs = snapshotReader(entries);
+        const fs = remoteSnapshot(base, state.overlay);
+        if (event.request.mode === 'navigate') {
+          const path = await physicalPath(rawPath(url.pathname), fs);
+          if ((await fs.stat(path)).isDirectory) return fetch('/index.html');
+        }
         const response = await readRaw(url.pathname, fs);
         if (event.request.destination === 'image' && response.ok) {
           const type = (

@@ -9,14 +9,14 @@
     "dev": "bun scripts/dev.ts",
     "preview": "bun scripts/serve.ts",
     "test": "bun test tests/*.test.ts",
-    "test:browser": "bun tests/browser.ts && bun tests/vim-browser.ts && bun tests/download-browser.ts && bun tests/crt-browser.ts && bun tests/visitors-browser.ts && bun tests/doom-browser.ts",
+    "test:browser": "bun tests/browser.ts && bun tests/directory-browser.ts && bun tests/vim-browser.ts && bun tests/download-browser.ts && bun tests/crt-browser.ts && bun tests/visitors-browser.ts && bun tests/doom-browser.ts && bun tests/program-browser.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "package": "bun scripts/package.ts",
     "build:updater": "bun build deploy/pull.ts --compile --target=bun-linux-x64 --outfile .artifacts/panicek-pull",
     "test:browser:ci": "bun scripts/test-browser.ts",
-    "build:visitors": "bun build deploy/visitors.ts --compile --minify --target=bun-linux-x64 --outfile .artifacts/panicek-visitors"
+    "build:visitors": "bun scripts/build-visitors.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

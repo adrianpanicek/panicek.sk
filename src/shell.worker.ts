@@ -19,7 +19,9 @@ let queue = Promise.resolve();
 const send = (value: object) => postMessage(value);
 
 async function init(base: BaseFiles) {
-  baseline = await snapshot(await createFilesystem(base));
+  const publishedFs = await createFilesystem(base);
+  await createShell(publishedFs).exec(':');
+  baseline = await snapshot(publishedFs);
   let warning = '';
   try {
     state = await loadState();
@@ -29,9 +31,9 @@ async function init(base: BaseFiles) {
   }
   let fs;
   try {
-    fs = await createFilesystem(base, state.overlay);
+    fs = await createFilesystem(base, state.overlay, { baseline });
   } catch {
-    fs = await createFilesystem(base);
+    fs = await createFilesystem(base, {}, { baseline });
     persistence = false;
     warning = 'Saved files could not be restored. Use reset to restore published files.';
   }
@@ -53,7 +55,7 @@ async function execute(command: string, id: number) {
   }
   let warning = '';
   try {
-    const overlay = overlayBetween(baseline, await snapshot(shell.fs));
+    const overlay = overlayBetween(baseline, await snapshot(shell.fs), state.overlay);
     if (JSON.stringify(overlay) !== JSON.stringify(state.overlay)) {
       if (!persistence)
         throw new Error(
@@ -132,7 +134,7 @@ self.onmessage = (event) => {
           await saveEditorFile(shell.fs, message.path, message.text, async () => {
             state = await commitState(
               state.revision,
-              overlayBetween(baseline, await snapshot(shell.fs)),
+              overlayBetween(baseline, await snapshot(shell.fs), state.overlay),
             );
           });
           send({ type: 'editor-saved', id: message.id });

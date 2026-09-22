@@ -80,3 +80,48 @@ describe('virtual executable applications', () => {
     expect(result.stderr).toContain('No such file or directory');
   });
 });
+
+describe('browser programs', () => {
+  test('recognizes executable JavaScript by header regardless of filename and parses quoted args', async () => {
+    const fs = await createFilesystem({
+      '/home/web/hello': '#!/usr/bin/env browser-js\napi.print(api.args.join(" "));',
+    });
+    const shell = createShell(fs);
+    const result = await shell.exec('./hello one "two words" \'three\'');
+    expect(result.application).toMatchObject({
+      name: 'browser',
+      format: 'js',
+      args: ['one', 'two words', 'three'],
+    });
+    await shell.exec('chmod -x ./hello');
+    expect((await shell.exec('./hello')).stderr).toContain('Permission denied');
+  });
+
+  test('recognizes raw wasm bytes without an extension and keeps local chmod authoritative', async () => {
+    const fs = await createFilesystem({});
+    await fs.writeFile('/tmp/program', new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]));
+    const shell = createShell(fs);
+    expect((await shell.exec('/tmp/program')).stderr).toContain('Permission denied');
+    await shell.exec('chmod +x /tmp/program');
+    expect((await shell.exec('/tmp/program')).application).toMatchObject({
+      name: 'browser',
+      format: 'wasm',
+    });
+  });
+
+  test('runs js files and symlinks but rejects unsupported argument expansion', async () => {
+    const fs = await createFilesystem({ '/home/web/demo.js': 'api.print("hello");' });
+    const shell = createShell(fs);
+    await shell.exec('ln -s /home/web/demo.js /tmp/demo.js');
+    expect((await shell.exec('/tmp/demo.js')).application?.name).toBe('browser');
+    const expanded = await shell.exec('./demo.js "$HOME"');
+    expect(expanded.application).toBeUndefined();
+    expect(expanded.stderr).toContain('literal');
+  });
+});
+
+test('published system scripts retain executable modes when present in startup files', async () => {
+  const { SYSTEM_FILES } = await import('../src/downloads');
+  const fs = await createFilesystem(SYSTEM_FILES);
+  expect((await fs.stat('/usr/sbin/save')).mode & 0o111).toBe(0o111);
+});

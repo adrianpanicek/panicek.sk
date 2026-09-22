@@ -3,10 +3,10 @@
 The portfolio is served at https://panicek.sk by nginx on `root@panicek.sk`.
 
 - Active document root: `/srv/http/panicek/current` (release symlink).
-- First release: `/srv/http/panicek/releases/20260920T231003Z`.
-- Previous nginx configuration and landing page:
-  `/srv/http/panicek/backups/20260920T231003Z/`.
-- nginx configuration: `/etc/nginx/nginx.conf`.
+- Server configuration: `/etc/nginx/`, managed directly on the host.
+
+Production nginx configuration is intentionally not stored in this repository.
+Website releases contain static assets only and never modify server configuration.
 
 Only the apex HTTPS site's static routing changed. Existing TLS configuration,
 MQTT proxy and subdomain server blocks remain in place. Existing apex files fall
@@ -15,26 +15,15 @@ passes `/temp`, `/mqtt`, and `/.well-known` requests through to the server.
 
 Markdown/text files are served as UTF-8 plain text. Assets use revalidation
 (`Cache-Control: no-cache`) because bundle filenames are stable. nginx compresses
-text assets. The site itself remains static; the visitor counter uses the separate
-`panicek-visitors` service backed by SQLite. Its compiled Bun executable and systemd
-unit are installed manually, independently of the static artifact updater.
-Both `panicek.sk` and `experiment.panicek.sk` are accepted origins, with separate counts.
-The database is `/var/lib/panicek-visitors/visitors.sqlite` and remains outside releases.
+text assets. The visitor counter runs inside nginx through its njs module.
+`https://panicek.sk` is the accepted visitor origin. Numeric UUID visit counters
+persist at `/var/lib/nginx/portfolio-visitors/state.json`, outside static releases.
+The former Bun/SQLite service is retired; its database is retained for rollback.
 
-The apex server includes `/etc/nginx/snippets/portfolio-locations.conf` for the
-visitor endpoint and precompressed JavaScript. `/etc/nginx/conf.d/portfolio-http.conf`
-defines its rate-limit zone and Brotli negotiation maps. Both are versioned in
-`deploy/nginx/`. Static gzip is enabled, with `text/javascript` included in gzip types.
-
-For subsequent deployments, build with Bun, upload `dist/` into a new release
-directory, then atomically replace the `current` symlink. Retain the previous
-release for rollback. The first-install script in `.artifacts/deploy` is specific
-to the original nginx configuration and is not a general update script.
-
-To roll back the initial nginx routing change, restore the backed-up nginx.conf,
-run `nginx -t`, and reload nginx only if validation succeeds. The old static
-files were left in place. To roll back a later portfolio release, point `current`
-at the previous release.
+For manual deployment, build with Bun, upload `dist/` into a new release
+directory, then atomically replace the `current` symlink. Keep the previous
+release for rollback. Server configuration changes are managed separately:
+back them up on the host, validate with `nginx -t`, and reload only on success.
 
 ## Automatic deployment
 
@@ -72,3 +61,51 @@ Deployment state is `/srv/http/panicek/.deployed.json`. To roll back, stop the
 timer and restore `current` to the previous path recorded there. Re-enable the
 timer after resolving the bad build. Previous releases are retained; remove old
 inactive releases manually when no longer needed.
+
+## Directory pages and lazy content
+
+Place directory pages in `content/<name>/INDEX.md`. Each top-level content directory
+gets a virtual symlink `/<name>` to `/home/web/<name>`, and a static shortcut for
+first visits. For example `/blog/` opens `/home/web/blog/INDEX.md`. A directory
+without `INDEX.md` displays its immediate entries. Raw file URLs remain raw.
+The build rejects content symlinks, ambiguous names, and reserved shortcut names.
+The ZIP packager expands generated shortcuts into regular files so the existing
+static updater needs no symlink handling.
+
+`filesystem.json` and `snapshot.json` contain only immediate home files, directory
+markers, shortcuts, and system files. Nested content is published separately under
+`/_files/home/web/`. Before deploying this build, the host must provide JSON
+directory listings at that path and serve child files as their original bytes.
+The filesystem reads these listings for `ls`, completion, and path traversal,
+fetching immediate files when a directory is first accessed. Nested directories
+remain unloaded until accessed. Loaded content is not persisted as a user edit.
+
+The remote tree has no generated HTML indexes or compressed sibling files.
+The host must reject ambiguous traversal encodings and prevent symlink escapes
+from that tree; the preview server also checks real paths against its root.
+Local shell symlinks resolve only within the browser filesystem and never become
+host filesystem paths. The preview server emulates nginx JSON listings for local
+development; there is no new production backend or change to `/api/visit`.
+
+## nginx-native visitor counter
+
+The njs handler is application code: `deploy/njs/visitors.ts`. Build it with
+`bun run build:visitors` and install `.artifacts/njs/visitors.js` as
+`/etc/nginx/njs/visitors.js` when updating the handler. Normal static deployments
+do not replace it. Keep the nginx and njs module versions compatible.
+
+The host connects `POST /api/visit` to `portfolioVisitors.visit`, with a 4 KiB
+request limit and rate limiting. The handler expects a persistent numeric shared
+dictionary named `portfolio_visitors`, without expiry or eviction. Its state
+lives at `/var/lib/nginx/portfolio-visitors/state.json`; preserve it across releases
+and keep its directory private and writable by the nginx worker account.
+The administrative `snapshot` handler must never be exposed publicly.
+
+The completed migration and rollback backups are retained on the server. The old
+Bun service is retired; historical metadata remains in the SQLite backup. njs
+stores only UUIDs and visit totals, checkpointed approximately once per second.
+Monitor nginx errors for failed persistence or a full dictionary. The client
+handles a counter failure without interrupting the portfolio.
+
+`tests/njs-nginx.py` creates a temporary nginx configuration solely to test the
+handler in isolation; it is not a production deployment template.
