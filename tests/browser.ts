@@ -469,8 +469,7 @@ try {
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
   resetPage.once('dialog', (dialog) => dialog.accept());
-  await resetPage.getByRole('textbox', { name: 'Shell command' }).fill('reset');
-  await resetPage.getByRole('textbox', { name: 'Shell command' }).press('Enter');
+  await resetPage.getByRole('button', { name: 'reset filesystem' }).click();
   await resetPage.waitForFunction(
     () =>
       !!document.querySelector<HTMLTextAreaElement>('#command') &&
@@ -481,7 +480,7 @@ try {
   assert.equal((await rawPage.goto(base + '/tmp/retained'))?.status(), 404);
   assert.equal((await rawPage.goto(base + '/~/ABOUT.md'))?.status(), 200);
   await resetPage.close();
-  console.log('PASS reset restores published files and removes local edits');
+  console.log('PASS reset filesystem button restores published files and removes local edits');
   assert.deepEqual(errors, []);
   await context.close();
 

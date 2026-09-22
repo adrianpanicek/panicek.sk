@@ -18,6 +18,7 @@ const highlight = document.querySelector<HTMLElement>('#input-highlight')!;
 const prompt = document.querySelector<HTMLElement>('#cwd')!;
 const status = document.querySelector<HTMLElement>('#status')!;
 const stop = document.querySelector<HTMLButtonElement>('#stop')!;
+const resetFilesystemButton = document.querySelector<HTMLButtonElement>('#reset-filesystem')!;
 const shellControls = document.querySelector<HTMLElement>('#shell-controls')!;
 let worker: Worker;
 let ready = false;
@@ -330,21 +331,7 @@ async function run(command: string, shown = command) {
     return;
   }
   if (command.trim() === 'reset') {
-    if (!confirm('Delete your saved shell files and edits, and restore the published portfolio?'))
-      return;
-    busy = true;
-    availability();
-    try {
-      await resetState();
-      worker.terminate();
-      initial = true;
-      lastExit = 0;
-      boot();
-    } catch (error) {
-      busy = false;
-      setStatus(String(error), true);
-      availability();
-    }
+    await resetFilesystem();
     return;
   }
   active = commandBlock(shown);
@@ -353,6 +340,24 @@ async function run(command: string, shown = command) {
   timeout = setTimeout(interrupt, 7000);
   worker.postMessage({ type: 'exec', command, id: ++sequence });
   scrollToPrompt();
+}
+async function resetFilesystem() {
+  if (!ready || busy || typing || editing) return;
+  if (!confirm('Delete your saved shell files and edits, and restore the published portfolio?'))
+    return;
+  busy = true;
+  availability();
+  try {
+    await resetState();
+    worker.terminate();
+    initial = true;
+    lastExit = 0;
+    boot();
+  } catch (error) {
+    busy = false;
+    setStatus(String(error), true);
+    availability();
+  }
 }
 async function animatedRun(command: string, shown = command) {
   if (!ready || busy || typing || editing) return;
@@ -487,6 +492,7 @@ document.querySelector('.terminal')!.addEventListener('click', (event) => {
 });
 stop.addEventListener('click', interrupt);
 document.querySelector('#help')!.addEventListener('click', () => void animatedRun('help'));
+resetFilesystemButton.addEventListener('click', () => void resetFilesystem());
 shellControls.hidden = false;
 form.hidden = false;
 paintInput();
