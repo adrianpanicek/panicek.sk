@@ -7,6 +7,7 @@ import { renderMarkdown, escapeHtml } from './markdown';
 import { catCommand, displayCat, displayPath, HOME } from './paths';
 import { resetState } from './storage';
 import type { BaseFiles } from './filesystem';
+import { createApplicationController } from './applications';
 
 setupCrt();
 void countVisitor();
@@ -36,6 +37,25 @@ let draft = '';
 let lastExit = 0;
 let completionLine = '';
 let typing: AbortController | undefined;
+const applications = createApplicationController({
+  environment: () => ({
+    coarsePointer: matchMedia('(pointer: coarse)').matches,
+    finePointer: matchMedia('(pointer: fine)').matches,
+    viewportWidth: innerWidth,
+    viewportHeight: innerHeight,
+    webAssembly: typeof WebAssembly === 'object',
+  }),
+  onStateChange: (state) => {
+    busy = state !== 'idle';
+    availability();
+  },
+  onComplete: (exitCode) => {
+    lastExit = exitCode;
+    availability();
+    input.focus({ preventScroll: true });
+    scrollToPrompt();
+  },
+});
 
 function paintInput() {
   input.style.height = 'auto';
@@ -61,9 +81,9 @@ function setStatus(message: string, warning = false) {
   status.classList.toggle('warning', warning);
 }
 function availability() {
-  input.disabled = !ready || editing;
+  input.disabled = !ready || editing || applications.state !== 'idle';
   form.setAttribute('aria-busy', String(Boolean(busy || typing)));
-  stop.hidden = !busy && !typing;
+  stop.hidden = applications.state !== 'idle' || (!busy && !typing);
   prompt.textContent = displayPath(cwd);
   document.querySelector('#exit-status')!.textContent = lastExit ? `[${lastExit}] ` : '';
 }
@@ -210,14 +230,21 @@ function boot() {
       busy = false;
       cwd = message.cwd;
       lastExit = message.exitCode;
-      if (active) {
-        output(active, message);
-        downloadFiles(active, message.downloads || []);
+      const block = active;
+      if (block) {
+        output(block, message);
+        downloadFiles(block, message.downloads || []);
       }
       active = undefined;
       if (message.editor) void launchEditor(message.editor);
       pruneScrollback();
       setStatus(message.warning || 'web · files stay in this browser', Boolean(message.warning));
+      if (message.application)
+        void applications.launch(message.application, (error) => {
+          if (block) plain(block, error + '\n', true);
+          lastExit = 1;
+          busy = false;
+        });
       availability();
       input.focus({ preventScroll: true });
       scrollToPrompt();
@@ -300,6 +327,7 @@ async function launchEditor(file: { path: string; text: string; isNew: boolean }
   }
 }
 function interrupt() {
+  if (applications.state !== 'idle') return;
   if (typing) {
     typing.abort();
     return;
@@ -443,7 +471,7 @@ input.addEventListener('keydown', (event) => {
   }
 });
 document.addEventListener('keydown', (event) => {
-  if (editing) return;
+  if (editing || applications.state !== 'idle') return;
   if (event.ctrlKey && event.key.toLowerCase() === 'c' && !window.getSelection()?.toString()) {
     if (busy || typing) {
       event.preventDefault();

@@ -73,7 +73,15 @@ async function execute(command: string, id: number) {
       result.exitCode = 1;
     }
   }
-  send({ type: 'result', id, ...result, editor, cwd: shell.getCwd(), warning });
+  send({
+    type: 'result',
+    id,
+    ...result,
+    application: 'application' in result ? result.application : undefined,
+    editor,
+    cwd: shell.getCwd(),
+    warning,
+  });
 }
 
 async function complete(line: string, id: number) {

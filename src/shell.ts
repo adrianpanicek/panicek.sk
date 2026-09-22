@@ -1,6 +1,14 @@
 import { collectDownloads, type Download } from './downloads';
-import { Bash, type IFileSystem, type ExecOptions } from 'just-bash/browser';
+import { Bash, type BashExecResult, type IFileSystem, type ExecOptions } from 'just-bash/browser';
+import { resolveExecutable, type ApplicationRequest } from './executables';
 import { HOME } from './paths';
+
+type ShellExecResult = BashExecResult & {
+  documents: { path: string; text: string }[];
+  downloads: Download[];
+  editorPath?: string;
+  application?: ApplicationRequest;
+};
 
 export const HELP = `Explore the portfolio\n\n  cat ~/ABOUT.md | render   About me\n  cat ~/CAREER.md | render  Career history\n  cat ~/CONTACTS.md | render  Get in touch\n  cat ~/portrait.txt  ASCII portrait\n  save <files...>    Download files (/usr/sbin/save)\n  vim <file>, vi      Edit a file (:w, :q, :wq)\n  ls, cd, pwd, find    Explore files\n  grep, sort, sed      Work with text and pipes\n  help                Show this help\n  clear               Clear the transcript\n  reset               Restore the published files\n\nTab completes paths. Shift+Enter adds a line; Enter runs it. Paste never auto-runs.\nUp/down browse history. Ctrl+C interrupts.\nEdits stay in this browser. Output is plain text. Pipe into render for Markdown and images. Markdown links run cat | render.\nOpen /~/CAREER.md in your address bar to read a raw file.\n`;
 export function createShell(fs: IFileSystem) {
@@ -109,7 +117,7 @@ export function createShell(fs: IFileSystem) {
   return {
     fs,
     getCwd: () => cwd,
-    async exec(command: string, options?: ExecOptions) {
+    async exec(command: string, options?: ExecOptions): Promise<ShellExecResult> {
       reads.length = 0;
       downloads.length = 0;
       editorPath = undefined;
@@ -117,7 +125,8 @@ export function createShell(fs: IFileSystem) {
       rendered = undefined;
       let markdown = false;
       try {
-        const statements = engine.transform(command).ast.statements;
+        const ast = engine.transform(command).ast;
+        const statements = ast.statements;
         const pipeline = statements[0]?.pipelines[0];
         const cmd = pipeline?.commands[0];
         interactiveEditor =
@@ -142,6 +151,28 @@ export function createShell(fs: IFileSystem) {
           last.name?.parts.length === 1 &&
           last.name.parts[0].type === 'Literal' &&
           last.name.parts[0].value === 'render';
+
+        const executable = await resolveExecutable(ast, fs, cwd);
+        if (executable.kind === 'error')
+          return {
+            stdout: '',
+            stderr: executable.stderr,
+            exitCode: executable.exitCode,
+            env,
+            documents: [],
+            downloads: [],
+            application: undefined,
+          };
+        if (executable.kind === 'application')
+          return {
+            stdout: '',
+            stderr: '',
+            exitCode: 0,
+            env,
+            documents: [],
+            downloads: [],
+            application: executable.application,
+          };
       } catch {}
       const result = await engine.exec(command, { ...options, cwd, env, replaceEnv: true });
       env = result.env;
@@ -155,6 +186,7 @@ export function createShell(fs: IFileSystem) {
         documents,
         downloads: [...downloads],
         editorPath: editorPath as string | undefined,
+        application: undefined,
       };
     },
   };

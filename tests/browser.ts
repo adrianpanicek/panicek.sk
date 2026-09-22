@@ -34,8 +34,11 @@ try {
     if (msg.type() === 'error') console.error('Browser:', msg.text());
   });
   let filesystemRequests = 0;
+  let doomRequests = 0;
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname === '/filesystem.json') filesystemRequests++;
+    const path = new URL(request.url()).pathname;
+    if (path === '/filesystem.json') filesystemRequests++;
+    if (path.startsWith('/assets/doom/')) doomRequests++;
   });
   await page.goto(base);
   const input = page.getByRole('textbox', { name: 'Shell command' });
@@ -49,6 +52,7 @@ try {
     { timeout: 20000 },
   );
   assert.equal(filesystemRequests, 1, 'startup must reuse the preloaded filesystem');
+  assert.equal(doomRequests, 0, 'startup must not request Doom assets');
   assert.ok(await page.locator('[data-source="/home/web/CONTACTS.md"]').count());
   await page.keyboard.type('echo keyboard-ready');
   assert.equal(
@@ -491,6 +495,10 @@ try {
     hasTouch: true,
   });
   const mobile = await mobileContext.newPage();
+  let mobileDoomRequests = 0;
+  mobile.on('request', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/assets/doom/')) mobileDoomRequests++;
+  });
   await mobile.goto(base);
   await mobile.waitForFunction(
     () =>
@@ -499,6 +507,20 @@ try {
       document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')!.readOnly,
   );
+  const mobileInput = mobile.getByRole('textbox', { name: 'Shell command' });
+  await mobileInput.fill('./DOOM');
+  await mobileInput.press('Enter');
+  await mobile.waitForFunction(
+    () =>
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
+      document.querySelector('#exit-status')?.textContent === '[1] ',
+  );
+  assert.equal(
+    (await mobile.locator('#transcript .entry').last().locator('.output.error').innerText()).trim(),
+    'DOOM: a computer with a physical keyboard is required',
+  );
+  assert.equal(await mobile.locator('#exit-status').textContent(), '[1] ');
+  assert.equal(mobileDoomRequests, 0, 'ineligible execution must not request Doom assets');
   await mobile.screenshot({ path: '.artifacts/mobile.png', fullPage: true });
   assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await mobileContext.close();

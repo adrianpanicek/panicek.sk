@@ -77,3 +77,36 @@ test('social previews are available in static HTML with a valid large image', as
   expect(imageSize(bytes)).toMatchObject({ width: 1200, height: 630, type: 'png' });
   expect(bytes.length).toBeLessThan(300000);
 });
+
+test('Doom ships as a separate compressed application outside the portfolio filesystem', async () => {
+  for (const name of [
+    'doom.wasm',
+    'LICENSE-GPL-2.0.txt',
+    'DOOM-SHAREWARE-NOTICE.txt',
+    'SOURCE.md',
+  ]) {
+    expect(await Bun.file(`dist/assets/doom/${name}`).bytes()).toEqual(
+      await Bun.file(`vendor/doom/${name}`).bytes(),
+    );
+  }
+  const game = await Bun.file('dist/assets/doom/app.js').text();
+  expect(game).toContain('launchDoom');
+  const client = await Bun.file('dist/assets/client.js').text();
+  expect(client).not.toContain('drawFrame');
+  expect(client).not.toContain('u_curve');
+  expect(client).not.toContain('initGame');
+  for (const path of [
+    'files.json',
+    'filesystem.json',
+    'snapshot.json',
+    'service-worker.js',
+    'index.html',
+  ]) {
+    expect(await Bun.file(`dist/${path}`).text()).not.toContain('/assets/doom/');
+  }
+  const compressed = await Bun.file('dist/assets/doom/doom.wasm.br').bytes();
+  expect(compressed.length).toBeLessThan(1700000);
+  expect(new Uint8Array(brotliDecompressSync(compressed))).toEqual(
+    await Bun.file('vendor/doom/doom.wasm').bytes(),
+  );
+});

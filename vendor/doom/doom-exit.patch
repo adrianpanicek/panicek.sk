@@ -1,0 +1,33 @@
+diff --git a/doomgeneric/src/i_system.c b/doomgeneric/src/i_system.c
+--- a/doomgeneric/src/i_system.c
++++ b/doomgeneric/src/i_system.c
+@@ -37 +37,2 @@
++#include "../../src/doom_wasm.h"
+ #include "deh_str.h"
+@@ -239 +240,3 @@ void I_Quit(void) {
++
++  onExit(0);
+ #if ORIGCODE
+diff --git a/src/doom_wasm.h b/src/doom_wasm.h
+--- a/src/doom_wasm.h
++++ b/src/doom_wasm.h
+@@ -96 +96,3 @@ EXPORT void reportKeyUp(int32_t doomKey);
++IMPORT_MODULE("lifecycle") void onExit(int32_t exitCode);
++
+ /*
+diff --git a/doomgeneric/src/d_main.c b/doomgeneric/src/d_main.c
+--- a/doomgeneric/src/d_main.c
++++ b/doomgeneric/src/d_main.c
+@@ -936,1 +936,3 @@
++#if ORIGCODE
+   exit(0);
++#endif
+@@ -1003,1 +1003,5 @@
++static void D_CheckDemoStatusOnExit(void) {
++  G_CheckDemoStatus();
++}
++
+ void D_DoomMain(void) {
+@@ -1323,1 +1327,1 @@
+-  I_AtExit((atexit_func_t)G_CheckDemoStatus, true);
++  I_AtExit(D_CheckDemoStatusOnExit, true);

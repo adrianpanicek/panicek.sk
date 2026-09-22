@@ -5,6 +5,18 @@ import { loadState, commitState } from '../src/storage';
 import { createShell } from '../src/shell';
 
 const base = { '/home/web/ABOUT.md': '# Original\n', '/home/web/CAREER.md': '# Career\n' };
+const launcher = '#!/usr/bin/env portfolio-app\ndoom\n';
+test('published applications are executable while restored permission changes win', async () => {
+  const published = { ...base, '/home/web/DOOM': launcher };
+  const fs = await createFilesystem(published);
+  const before = await snapshot(fs);
+  expect((await fs.stat('/home/web/DOOM')).mode & 0o777).toBe(0o755);
+
+  await fs.chmod('/home/web/DOOM', 0o644);
+  const overlay = overlayBetween(before, await snapshot(fs));
+  const restored = await createFilesystem(published, overlay);
+  expect((await restored.stat('/home/web/DOOM')).mode & 0o777).toBe(0o644);
+});
 test('shell writes, deletion, binary files and symlinks survive overlay restore', async () => {
   const fs = await createFilesystem(base);
   const before = await snapshot(fs);

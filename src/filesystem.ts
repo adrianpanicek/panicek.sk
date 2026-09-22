@@ -25,6 +25,7 @@ export async function createFilesystem(base: BaseFiles, overlay: Overlay = {}) {
     { maxTotalBytes: 8 * 1024 * 1024 },
   );
   await initial.chmod('/usr/sbin/save', 0o755);
+  if (await initial.exists('/home/web/DOOM')) await initial.chmod('/home/web/DOOM', 0o755);
   await initial.mkdir(HOME, { recursive: true });
   await initial.mkdir('/tmp', { recursive: true });
   const entries = applyOverlay(await snapshot(initial), overlay);

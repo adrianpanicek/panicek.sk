@@ -102,6 +102,9 @@ for (const weight of [400, 700])
     await cp(`node_modules/@fontsource/ubuntu-mono/files/${name}`, join(out, 'assets', name));
   }
 await cp('node_modules/@fontsource/ubuntu-mono/LICENSE', join(out, 'assets', 'FONT-LICENSE.txt'));
+await mkdir(join(out, 'assets', 'doom'), { recursive: true });
+for (const name of ['doom.wasm', 'LICENSE-GPL-2.0.txt', 'DOOM-SHAREWARE-NOTICE.txt', 'SOURCE.md'])
+  await cp(join('vendor', 'doom', name), join(out, 'assets', 'doom', name));
 await Bun.write(
   join(out, 'assets', 'styles.css'),
   compile('src/styles.scss', { style: 'compressed', sourceMap: false }).css,
@@ -109,6 +112,7 @@ await Bun.write(
 for (const [entry, output] of [
   ['src/client.ts', 'assets/client.js'],
   ['src/vim.ts', 'assets/vim.js'],
+  ['src/doom/index.ts', 'assets/doom/app.js'],
   ['src/shell.worker.ts', 'assets/shell.worker.js'],
   ['src/service-worker.ts', 'service-worker.js'],
 ]) {
@@ -205,7 +209,7 @@ console.log(
 );
 
 for (const path of new Bun.Glob('**/*').scanSync({ cwd: out, onlyFiles: true })) {
-  if (!/\.(js|css|json|html|svg|txt|md|xml)$/.test(path)) continue;
+  if (!/\.(js|css|json|html|svg|txt|md|xml|wasm)$/.test(path)) continue;
   const bytes = new Uint8Array(await Bun.file(join(out, path)).arrayBuffer());
   if (bytes.length < 1024) continue;
   await Bun.write(join(out, path + '.gz'), Bun.gzipSync(bytes, { level: 9 }));

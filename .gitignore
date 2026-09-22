@@ -2,6 +2,7 @@ node_modules/
 dist/
 .artifacts/
 coverage/
+.cache/doom-build/
 .env
 .env.*
 !.env.example
@@ -13,3 +14,4 @@ docs/site-design.md
 docs/superpowers/
 
 .git-local/
+.worktrees/

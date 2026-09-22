@@ -30,7 +30,9 @@
 }
 
 @media screen {
-  :root[data-crt='on'][data-crt-curved='ready'][data-crt-pointer='visible'] {
+  :root[data-crt='on'][data-crt-curved='ready'][data-crt-pointer='visible']:not(
+      [data-application='doom']
+    ) {
     .crt-viewport,
     .crt-viewport * {
       cursor: none !important;
@@ -205,6 +207,44 @@
       height: auto;
       overflow: visible;
       padding: 8px;
+    }
+  }
+}
+
+:root[data-application='doom'][data-crt] {
+  body {
+    overflow: hidden;
+    padding: 0;
+  }
+
+  main {
+    display: none;
+  }
+
+  .crt-viewport {
+    display: block;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--bg);
+    filter: none;
+  }
+
+  .crt-screen {
+    inset: auto;
+    left: var(--doom-left);
+    top: var(--doom-top);
+    width: var(--doom-width);
+    height: var(--doom-height);
+    --crt-refresh-height: var(--doom-refresh-height);
+    --crt-refresh-end: var(--doom-refresh-end);
+    --crt-refresh-steps: var(--doom-refresh-steps);
+    background: none;
+    box-shadow: none;
+
+    &::before,
+    &::after {
+      display: none;
     }
   }
 }
