@@ -67,7 +67,8 @@
     font-size: 20px;
   }
 
-  #vim-editor .cm-scroller {
+  #vim-editor .cm-scroller,
+  #vim-editor .cm-vim-panel {
     font-family: 'IBM VGA', 'Ubuntu Mono', monospace;
     font-size: 1rem;
   }

@@ -45,6 +45,26 @@ try {
     }),
     true,
   );
+  await page.keyboard.press(':');
+  const vimCommand = page.locator('#vim-editor .cm-vim-panel input');
+  await vimCommand.waitFor();
+  const commandStyle = await vimCommand.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const contentStyle = getComputedStyle(document.querySelector('#vim-editor .cm-content')!);
+    return {
+      fontFamily: style.fontFamily,
+      fontSize: style.fontSize,
+      appearance: style.appearance,
+      contentFontFamily: contentStyle.fontFamily,
+      contentFontSize: contentStyle.fontSize,
+      insideCrt: Boolean(node.closest('.crt-viewport')),
+    };
+  });
+  assert.equal(commandStyle.insideCrt, true);
+  assert.equal(commandStyle.fontFamily, commandStyle.contentFontFamily);
+  assert.equal(commandStyle.fontSize, commandStyle.contentFontSize);
+  assert.equal(commandStyle.appearance, 'none');
+  await page.keyboard.press('Escape');
   await page.keyboard.type('iHello from Vim');
   await ex('q');
   await page.waitForFunction(() =>
