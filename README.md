@@ -207,6 +207,11 @@ The footer's
 `crt: on/off` button remembers the setting in this browser. Scanlines and the refresh band stay anchored to the viewport while content scrolls. Overlay layers never intercept input;
 the displacement map is generated once, and the filter stays viewport-sized.
 
+Firefox uses a lighter CRT mode with the same VGA font, static scanlines, and
+edge shading, but no SVG curvature/bloom filter or moving refresh band. It uses
+native page scrolling and the native cursor to avoid continuous full-screen
+rasterization during idle caret blinking and scrolling.
+
 CRT mode uses WebPlus IBM VGA 8x16 by VileR, a pixel-outline reproduction of
 classic BIOS/VGA text-mode characters, at the existing responsive text size.
 Vim uses the same font. The self-hosted webfont is 23 KB and includes extended

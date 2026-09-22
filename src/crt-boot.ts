@@ -3,6 +3,9 @@ function setupCurvature() {
     document.documentElement.dataset.crt =
       localStorage.getItem('portfolio:crt') === 'off' ? 'off' : 'on';
   } catch {}
+  // Gecko repeatedly rasterizes the viewport-wide SVG filter during scrolling
+  // and even caret blinking. Keep the static CRT styling without that filter.
+  if (CSS.supports('-moz-appearance', 'none')) return;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'crt-filter');
   svg.setAttribute('aria-hidden', 'true');

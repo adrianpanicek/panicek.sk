@@ -136,6 +136,15 @@
   }
 }
 
+// Match the lightweight Gecko path in crt-boot.ts. A static overlay avoids
+// continuous full-screen work while leaving scanlines and edge shading intact.
+@supports (-moz-appearance: none) {
+  :root[data-crt='on'] .crt-screen::after {
+    display: none;
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root[data-crt='on'] .crt-screen::after {
     display: none;

@@ -9,7 +9,7 @@
     "dev": "bun scripts/dev.ts",
     "preview": "bun scripts/serve.ts",
     "test": "bun test tests/*.test.ts",
-    "test:browser": "bun tests/browser.ts && bun tests/directory-browser.ts && bun tests/vim-browser.ts && bun tests/download-browser.ts && bun tests/crt-browser.ts && bun tests/visitors-browser.ts && bun tests/doom-browser.ts && bun tests/program-browser.ts",
+    "test:browser": "bun tests/browser.ts && bun tests/directory-browser.ts && bun tests/vim-browser.ts && bun tests/download-browser.ts && bun tests/crt-browser.ts && bun tests/firefox-browser.ts && bun tests/visitors-browser.ts && bun tests/doom-browser.ts && bun tests/program-browser.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -42,8 +42,8 @@ jobs:
           path: dist/
       - name: Unit and build-output tests
         run: bun run test
-      - name: Install Chromium
-        run: bun x playwright install --with-deps chromium
+      - name: Install Chromium and Firefox
+        run: bun x playwright install --with-deps chromium firefox
       - name: Terminal, Vim, and download browser tests
         shell: bash
         run: |

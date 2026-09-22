@@ -19,10 +19,11 @@ export function setupCrt() {
   paint();
   toggle.addEventListener('click', () => {
     const main = document.querySelector('main')!;
-    const scroll = enabled ? main.scrollTop : window.scrollY;
+    const curved = document.documentElement.dataset.crtCurved === 'ready';
+    const scroll = enabled && curved ? main.scrollTop : window.scrollY;
     enabled = !enabled;
     paint();
-    if (enabled) main.scrollTop = scroll;
+    if (enabled && curved) main.scrollTop = scroll;
     else window.scrollTo(0, scroll);
     try {
       localStorage.setItem(key, enabled ? 'on' : 'off');
