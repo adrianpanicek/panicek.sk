@@ -156,7 +156,12 @@ try {
   await mousePage.goto(base);
   await mousePage.locator('.crt-pointer').waitFor({ state: 'attached' });
   await mousePage.mouse.move(640, 450);
-  await mousePage.waitForFunction(() => document.documentElement.dataset.crtPointer === 'visible');
+  await mousePage.waitForFunction(
+    () =>
+      document.documentElement.dataset.crtPointer === 'visible' &&
+      document.querySelector<HTMLElement>('.crt-pointer')?.style.transform ===
+        'translate(640px, 450px)',
+  );
   const pointer = mousePage.locator('.crt-pointer');
   assert.equal(await pointer.evaluate((node) => getComputedStyle(node).pointerEvents), 'none');
   assert.equal(
@@ -175,8 +180,8 @@ try {
   await mousePage.mouse.move(1000, 850);
   await mousePage.waitForFunction(
     () =>
-      document.querySelector<HTMLElement>('.crt-pointer')?.style.transform !==
-      'translate(640px, 450px)',
+      document.querySelector<HTMLElement>('.crt-pointer')?.style.transform ===
+      'translate(1000px, 850px)',
   );
   assert.equal(
     await pointer.evaluate((node) => getComputedStyle(node).transform),
