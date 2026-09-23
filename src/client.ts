@@ -38,6 +38,7 @@ let timeout: ReturnType<typeof setTimeout> | undefined;
 let initial = true;
 let navigation = false;
 let historyEntry = 0;
+let historyPath = location.pathname;
 const historyPrefix = crypto.randomUUID();
 let historyTarget: HTMLElement | undefined;
 const autoScroll = createAutoScroll();
@@ -516,7 +517,10 @@ async function animatedRun(command: string, shown = command, url?: string) {
   if (!ready || busy || typing || editing) return;
   if (await typeCommand(shown)) {
     await run(command, shown, true);
-    if (url && active) window.history.pushState({ terminalEntry: active.id }, '', url);
+    if (url && active) {
+      window.history.pushState({ terminalEntry: active.id }, '', url);
+      historyPath = location.pathname;
+    }
   }
 }
 form.addEventListener('submit', (event) => {
@@ -612,6 +616,10 @@ document.addEventListener('click', (event) => {
 });
 window.history.scrollRestoration = 'manual';
 window.addEventListener('popstate', (event) => {
+  const changedPath = historyPath !== location.pathname;
+  historyPath = location.pathname;
+  // Hash-only history belongs to the current document or embedded application.
+  if (!changedPath && !event.state?.terminalEntry) return;
   if (isBlogPath(location.pathname)) worker.postMessage({ type: 'blog-directory' });
   const target = document.getElementById(event.state?.terminalEntry);
   if (!target) {

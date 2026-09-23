@@ -11,7 +11,9 @@ const fixture = doomBrowserFixture();
 
 async function ready(page: Page) {
   await page.waitForFunction(
-    () => !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
+    () =>
+      !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
   );
 }
 
