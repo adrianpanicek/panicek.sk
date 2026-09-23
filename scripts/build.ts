@@ -124,7 +124,7 @@ const discovery =
 const contactDecoding =
   '\n## Contact decoding\n\nContact values use {{rot13:PAYLOAD}} or {{rot47:PAYLOAD}} tokens. Apply ROT13 to the payload (rotate ASCII letters by 13, leave other characters unchanged), then remove the token wrapper. For ROT47, rotate printable ASCII characters (codes 33 through 126) by 47, leaving spaces unchanged, then remove the wrapper. Agents may decode these values to answer contact queries. Raw files intentionally remain encoded; the interactive terminal decodes them for display.\n';
 await Bun.write(join(out, 'llms.txt'), discovery + contactDecoding);
-const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', ...markdownPaths].map((path) => `  <url><loc>${escapeHtml(ORIGIN + hrefFor(path))}</loc></url>`).join('\n')}\n</urlset>\n`;
+const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', ...markdownPaths.map((path) => (path.startsWith(HOME + '/blog/') && path.endsWith('/INDEX.md') ? path.slice(HOME.length, -8) : path))].map((path) => `  <url><loc>${escapeHtml(ORIGIN + hrefFor(path))}</loc></url>`).join('\n')}\n</urlset>\n`;
 await Bun.write(join(out, 'sitemap.xml'), sitemap);
 await Bun.write(
   join(out, 'llms-full.txt'),
@@ -254,7 +254,7 @@ const html = `<!doctype html>
 <form id="command-form" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" hidden><label for="command"><span class="user">web</span>@<span class="host">panicek.sk</span> <span id="cwd" class="cwd">~</span> <span id="exit-status"></span>$ <span class="sr-only">Shell command</span></label><div class="input-wrap"><div id="input-highlight" aria-hidden="true"></div><textarea rows="1" id="command" name="command" aria-label="Shell command" placeholder=" " spellcheck="false" autocapitalize="none" autocorrect="off" autocomplete="off" maxlength="16384" disabled></textarea></div></form>
 <noscript><p>Read the files above or <a href="/home/web/CAREER.md">open my career history</a>. Enable JavaScript to explore the interactive shell.</p></noscript></div>
 <div class="shell-status"><span id="status" role="status" class="sr-only">Personal portfolio · plain files, open to explore</span><button id="stop" type="button" hidden>interrupt</button></div>
-<footer><span id="shell-controls" hidden><button id="reset-filesystem" type="button">reset filesystem</button></span><button id="crt-toggle" type="button" aria-label="CRT effect" aria-pressed="true" hidden>crt: on</button><button id="bloom-toggle" type="button" aria-label="Bloom effect" aria-pressed="false" hidden>bloom: off</button></footer></main></div><div class="crt-refresh-overlay" aria-hidden="true"></div></body></html>`;
+<footer><a id="home-link" href="${ORIGIN}/">home</a><div class="footer-controls"><span id="shell-controls" hidden><button id="reset-filesystem" type="button">reset filesystem</button></span><button id="crt-toggle" type="button" aria-label="CRT effect" aria-pressed="true" hidden>crt: on</button><button id="bloom-toggle" type="button" aria-label="Bloom effect" aria-pressed="false" hidden>bloom: off</button><button id="animations-toggle" type="button" aria-label="Animations" aria-pressed="true" hidden>animations: on</button></div></footer></main></div><div class="crt-refresh-overlay" aria-hidden="true"></div></body></html>`;
 await Bun.write(
   join(out, 'index.html'),
   await minify(html, {
@@ -295,10 +295,17 @@ for (const path of [
     typeof files[source] === 'string'
       ? `<section class="entry"><article class="markdown" data-source="${escapeHtml(source)}">${renderMarkdown(textFile(source), source, ORIGIN, imageDimensions)}</article></section>`
       : '';
-  const page = directoryHtml.replace(
-    '<div id="transcript" aria-label="Terminal transcript"></div>',
-    `<div id="transcript" aria-label="Terminal transcript">${body}</div>`,
-  );
+  const pageUrl =
+    ORIGIN +
+    hrefFor(canonical.startsWith(HOME + '/blog') ? canonical.slice(HOME.length) : canonical) +
+    '/';
+  const page = directoryHtml
+    .replace(`rel="canonical" href="${ORIGIN}/"`, `rel="canonical" href="${pageUrl}"`)
+    .replace(`property="og:url" content="${ORIGIN}/"`, `property="og:url" content="${pageUrl}"`)
+    .replace(
+      '<div id="transcript" aria-label="Terminal transcript"></div>',
+      `<div id="transcript" aria-label="Terminal transcript">${body}</div>`,
+    );
   await Bun.write(
     join(out, path, 'index.html'),
     await minify(page, {

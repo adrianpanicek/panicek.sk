@@ -87,7 +87,9 @@ export function renderMarkdown(
       const attr = local.path.toLowerCase().endsWith('.md')
         ? ` data-file="${escapeHtml(local.path)}"`
         : '';
-      return `<a href="${escapeHtml(local.href)}"${attr}>${label}</a>`;
+      const blog = local.href.match(/^\/(?:home\/web\/)?blog\/(.*)INDEX\.md$/);
+      const destination = blog ? `${origin}/blog/${blog[1]}` : local.href;
+      return `<a href="${escapeHtml(destination)}"${attr}>${label}</a>`;
     }
     if (!/^(https?:|mailto:|tel:)/i.test(href)) return label;
     return `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${label}</a>`;

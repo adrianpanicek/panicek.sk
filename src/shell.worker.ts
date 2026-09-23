@@ -9,7 +9,7 @@ import {
 } from './filesystem';
 import { loadState, commitState, type State } from './storage';
 import { createShell } from './shell';
-import { HOME, normalize, quote, rawPath } from './paths';
+import { HOME, normalize, quote, rawPath, isBlogPath } from './paths';
 
 let shell: ReturnType<typeof createShell>;
 let baseline: Snapshot;
@@ -38,6 +38,7 @@ async function init(base: BaseFiles, pathname = '/') {
     warning = 'Saved files could not be restored. Use reset to restore published files.';
   }
   shell = createShell(fs);
+  if (isBlogPath(pathname)) await shell.exec('cd ~/blog');
   const startup = [];
   const commands =
     pathname === '/' || pathname === '/index.html'
@@ -131,7 +132,10 @@ self.onmessage = (event) => {
   queue = queue
     .then(async () => {
       if (message.type === 'init') await init(message.base, message.pathname);
-      else if (message.type === 'exec') await execute(message.command, message.id);
+      else if (message.type === 'blog-directory') {
+        const result = await shell.exec('cd ~/blog');
+        send({ type: 'cwd', cwd: shell.getCwd(), error: result.stderr });
+      } else if (message.type === 'exec') await execute(message.command, message.id);
       else if (message.type === 'editor-save') {
         try {
           if (!persistence) throw new Error('Browser storage is unavailable; file was not saved.');

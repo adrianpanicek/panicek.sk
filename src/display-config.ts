@@ -1,4 +1,4 @@
-export type DisplayConfig = { crt: boolean; bloom: boolean };
+export type DisplayConfig = { crt: boolean; bloom: boolean; animations: boolean };
 type ConfigStorage = Pick<Storage, 'getItem' | 'setItem'>;
 const KEY = 'portfolio:config';
 
@@ -14,7 +14,7 @@ export function readDisplayConfig(
   defaultBloom: boolean,
   storage = browserStorage(),
 ): DisplayConfig {
-  const config = { crt: true, bloom: defaultBloom };
+  const config = { crt: true, bloom: defaultBloom, animations: true };
   try {
     const crt = storage?.getItem('portfolio:crt');
     const bloom = storage?.getItem('portfolio:bloom');
@@ -22,6 +22,7 @@ export function readDisplayConfig(
     if (bloom === 'on' || bloom === 'off') config.bloom = bloom === 'on';
     const saved = JSON.parse(storage?.getItem(KEY) || 'null');
     if (typeof saved?.crt === 'boolean') config.crt = saved.crt;
+    if (typeof saved?.animations === 'boolean') config.animations = saved.animations;
     if (typeof saved?.bloom === 'boolean') config.bloom = saved.bloom;
   } catch {}
   return config;

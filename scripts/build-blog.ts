@@ -139,6 +139,7 @@ export async function buildBlog(
         renderIndex({
           title,
           blogUrl: href('INDEX.md'),
+          showBlogLink: base !== '' || page > 1,
           tagsUrl: href('tags/INDEX.md'),
           page,
           pageCount: count,

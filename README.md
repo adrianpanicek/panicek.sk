@@ -117,10 +117,15 @@ seeded into the shell. Add only files intended for public access.
 
 A link such as `[Career](CAREER.md)` types `cat ~/CAREER.md | render` character by character,
 then executes it. Escape or Ctrl+C cancels the animation and restores any input
-draft. Reduced-motion preferences skip the typing delay.
+draft. Reduced-motion preferences skip the typing delay. The footer animations
+toggle saves your preference and disables typing, scroll easing, and CSS animations.
 Relative links resolve from the displayed document, not the current shell
 directory. External links behave normally. With JavaScript disabled or a modified
-click, links open raw files.
+click, blog index and article links open their prerendered pages; other Markdown
+links open raw files. Normal blog clicks update the URL without reloading and retain scrollback,
+with the new command aligned near the top of the viewport. Navigation scrolls
+with quadratic easing and stops when the user scrolls or interacts; startup
+does not scroll. The next prompt stays directly below the last output.
 
 Build output includes robots.txt, sitemap.xml, llms.txt, llms-full.txt, files.json,
 canonical/social metadata, Person JSON-LD, and a terminal favicon. The sitemap and
@@ -278,7 +283,9 @@ the displacement map is generated once, and the filter stays viewport-sized.
 selects the text shadows and image glow described below. Both modes keep
 distortion, and the choice persists in this browser. Firefox defaults to off
 for performance; other browsers default to on. The effects are never stacked.
-The footer contains reset filesystem, visitor count (when available), CRT and bloom controls.
+The footer has a Home link on the left and reset filesystem, visitor count (when
+available), CRT and bloom controls on the right, separated by `|`. Home navigates
+to the site homepage.
 
 Firefox retains the same viewport-wide barrel distortion and curved mouse
 pointer, along with the VGA font, static scanlines, edge shading and blinking
@@ -505,7 +512,7 @@ The development watcher rebuilds when either template changes. Handlebars is a
 build-only dependency; template files and the engine are not shipped to browsers.
 Post files remain ordinary Markdown and are not processed as templates.
 
-The listing template receives `title`, `blogUrl`, `tagsUrl`, `page`, `pageCount`,
+The listing template receives `title`, `blogUrl`, `showBlogLink`, `tagsUrl`, `page`, `pageCount`,
 `newerUrl`, `olderUrl`, and `posts`. Each post has `title`, `date`, `excerpt`, `url`,
 `thumbnailUrl`, and `tags` (each with `name` and `url`). Optional URLs are `null`.
 The tags template receives `blogUrl` and `tags`, each with `name`, `url`, and `count`.
@@ -543,10 +550,17 @@ change. If browser storage is blocked or corrupted, the controls still work and
 use browser defaults when no valid saved choice is available.
 
 Direct directory URLs, such as `/blog` and `/home/web/blog`, open only that
-directory's index or listing. The homepage introduction and contacts load only
+directory's index or listing. Entering a blog index or article sets the shell's
+working directory to `~/blog`, including direct loads and blog links. The homepage introduction and contacts load only
 at `/` or `/index.html`. Published directories with `INDEX.md` also prerender
 that document in their HTML; service-worker directory navigation starts with an
 empty shell while the current local or published content loads.
+
+JavaScript hides the static transcript before first paint, types the startup
+command into the empty console, and then shows its output. Without JavaScript,
+the prerendered content stays visible; a failed shell load restores that content.
+Blog links contain absolute URLs to the rendered directory pages, and each page
+has its own canonical URL in the sitemap. Reduced motion skips the typing delay.
 
 ### Commands after rendering Markdown
 
@@ -567,10 +581,10 @@ following a Markdown link, or using `render`/`cat file.md | render`. Reading a r
 file or using plain `cat` does not execute it. Metadata stays hidden in rendered
 Markdown. Static HTML without JavaScript does not execute commands.
 
-The test post opts in through its own metadata. Add the same field to individual
-posts that should show About. Generated blog listings, paginated listings, and tag
-indexes do not set a hook, so direct `/blog` visits show only the index. Individual
-post visits show the post followed by About, without the normal contacts startup.
+No published article or generated index currently opts into a render hook.
+Articles show only their own content; the footer's Home link returns to the
+homepage. The optional hook mechanism remains available for explicitly authored
+page behavior.
 
 Hooks use the same sandbox and command limits as terminal commands. They can
 modify the browser's virtual files, so use them only for intentional page behavior.

@@ -46,3 +46,7 @@ export function resolveLink(
     return null;
   }
 }
+
+export function isBlogPath(path: string): boolean {
+  return /^\/(?:home\/web\/)?blog(?:\/|$)/.test(normalize(rawPath(path)));
+}

@@ -10,15 +10,37 @@ for (const engine of [chromium, firefox]) {
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
+    const idle = () =>
+      page.waitForFunction(
+        () =>
+          document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
+          !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
+      );
     await page.route('**/api/visit', (route) => route.fulfill({ json: { visitors: 42 } }));
     await page.goto(process.env.TEST_URL || 'http://127.0.0.1:4321');
     const toggle = page.locator('#bloom-toggle');
     await toggle.waitFor();
+    await idle();
     await page.locator('#visitor-count').waitFor();
-    assert.equal(await page.locator('footer a').count(), 0);
+    const home = page.getByRole('link', { name: 'home', exact: true });
+    assert.equal(await home.getAttribute('href'), 'https://panicek.sk/');
+    const controls = page.locator('.footer-controls');
+    const homeBox = (await home.boundingBox())!;
+    const controlBox = (await controls.boundingBox())!;
+    const footerBox = (await page.locator('footer').boundingBox())!;
+    assert.ok(homeBox.x < controlBox.x);
+    assert.ok(Math.abs(controlBox.x + controlBox.width - footerBox.x - footerBox.width) < 2);
+    for (const id of ['visitor-count', 'crt-toggle', 'bloom-toggle', 'animations-toggle'])
+      assert.ok(
+        (
+          await page
+            .locator('#' + id)
+            .evaluate((node) => getComputedStyle(node, '::before').content)
+        ).includes('|'),
+      );
     assert.deepEqual(
       await page.locator('footer button').evaluateAll((nodes) => nodes.map((n) => n.id)),
-      ['reset-filesystem', 'crt-toggle', 'bloom-toggle'],
+      ['reset-filesystem', 'crt-toggle', 'bloom-toggle', 'animations-toggle'],
     );
     assert.equal(await page.locator('footer #status, footer #stop').count(), 0);
     assert.equal(await toggle.textContent(), `bloom: ${engine === firefox ? 'off' : 'on'}`);
@@ -35,10 +57,12 @@ for (const engine of [chromium, firefox]) {
       );
       const copy = page.locator('.crt-image-bloom').first();
       const portrait = page.locator('.markdown img').first();
+      await portrait.scrollIntoViewIfNeeded();
       await portrait.evaluate((n) => (n as HTMLImageElement).decode());
       assert.equal(await copy.isVisible(), !enabled);
       await page.reload();
       await toggle.waitFor();
+      await idle();
       assert.equal(await toggle.getAttribute('aria-pressed'), String(enabled));
     }
     await page.locator('#crt-toggle').click();
@@ -49,6 +73,7 @@ for (const engine of [chromium, firefox]) {
     );
     await page.reload();
     await toggle.waitFor();
+    await idle();
     assert.equal(await page.locator('html').getAttribute('data-crt'), 'off');
     assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
     const reopened = await page.context().newPage();

@@ -1,8 +1,14 @@
 import { describe, expect, test } from 'bun:test';
-import { rawPath, resolveLink, catCommand } from '../src/paths';
+import { rawPath, resolveLink, catCommand, isBlogPath } from '../src/paths';
 import { renderMarkdown } from '../src/markdown';
 
 describe('virtual paths', () => {
+  test('blog navigation recognizes canonical, short and home aliases', () => {
+    for (const path of ['/blog', '/blog/post/', '/home/web/blog/INDEX.md', '/~/blog/tags/'])
+      expect(isBlogPath(path)).toBe(true);
+    for (const path of ['/', '/blogger', '/home/web/blog/../ABOUT.md'])
+      expect(isBlogPath(path)).toBe(false);
+  });
   test('home notation works for arbitrary nested files', () => {
     expect(rawPath('/~/notes/a%20b.md')).toBe('/home/web/notes/a b.md');
     expect(rawPath('/tmp/example.txt')).toBe('/tmp/example.txt');

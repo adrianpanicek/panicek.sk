@@ -3,13 +3,16 @@ import { setupCrtImages } from './crt-image';
 import { countVisitor } from './visitors';
 import { commandRanges, highlightCommand } from './highlight';
 import { decodeContactTokens } from './contacts';
+import { animationsEnabled, setupAnimations } from './animations';
 import { typeText } from './typing';
+import { createAutoScroll } from './auto-scroll';
 import { renderMarkdown, escapeHtml } from './markdown';
-import { catCommand, displayCat, displayPath, HOME, quote } from './paths';
+import { catCommand, displayCat, displayPath, HOME, isBlogPath } from './paths';
 import { resetState } from './storage';
 import type { BaseFiles } from './filesystem';
 import { createApplicationController } from './applications';
 
+setupAnimations();
 setupCrt();
 setupCrtImages(document);
 void countVisitor();
@@ -33,6 +36,15 @@ let sequence = 0;
 let active: HTMLElement | undefined;
 let timeout: ReturnType<typeof setTimeout> | undefined;
 let initial = true;
+let navigation = false;
+let historyEntry = 0;
+const historyPrefix = crypto.randomUUID();
+let historyTarget: HTMLElement | undefined;
+const autoScroll = createAutoScroll();
+const scrollSpace = document.createElement('div');
+scrollSpace.setAttribute('aria-hidden', 'true');
+scrollSpace.style.flexShrink = '0';
+document.querySelector('.shell-status')!.before(scrollSpace);
 let history: string[] = [];
 let historyIndex = 0;
 let draft = '';
@@ -92,8 +104,12 @@ function availability() {
   document.querySelector('#exit-status')!.textContent = lastExit ? `[${lastExit}] ` : '';
 }
 function commandBlock(command: string, at = cwd) {
+  const previous = transcript.lastElementChild as HTMLElement | null;
+  if (previous)
+    previous.style.containIntrinsicSize = `auto ${previous.getBoundingClientRect().height}px`;
   const block = document.createElement('section');
   block.className = 'entry';
+  block.id = `command-${historyPrefix}-${++historyEntry}`;
   const line = document.createElement('div');
   line.className = 'prompt-line';
   line.innerHTML = `<span class="user">web</span>@<span class="host">panicek.sk</span> <span class="cwd">${escapeHtml(displayPath(at))}</span> $ ${highlightCommand(command)}`;
@@ -195,6 +211,27 @@ function pruneScrollback() {
     transcript.prepend(notice);
   }
 }
+function revealShell() {
+  delete document.documentElement.dataset.shellBoot;
+}
+function anchorPrompt(node: HTMLElement, animate = true) {
+  const main = document.querySelector('main')!;
+  const inset = Math.max(8, parseFloat(getComputedStyle(main).paddingTop) || 0);
+  const footerSpace =
+    document.querySelector('footer')!.getBoundingClientRect().bottom -
+    scrollSpace.getBoundingClientRect().bottom;
+  // Keep the prompt beside its output and reserve the bottom of the viewport for the footer.
+  scrollSpace.style.height = `${Math.max(
+    0,
+    innerHeight -
+      inset * 2 -
+      footerSpace -
+      (parseFloat(getComputedStyle(form).marginBottom) || 0) -
+      (form.getBoundingClientRect().bottom - node.getBoundingClientRect().top),
+  )}px`;
+  if (animate) autoScroll.move(node, inset);
+  else autoScroll.retarget(node);
+}
 function scrollToPrompt() {
   form.scrollIntoView({ block: 'nearest', behavior: 'instant' });
 }
@@ -204,8 +241,14 @@ function boot() {
   availability();
   setStatus('Starting shell…');
   worker = new Worker('/assets/shell.worker.js', { type: 'module' });
-  worker.onmessage = (event) => {
+  worker.onmessage = async (event) => {
     const message = event.data;
+    if (message.type === 'cwd') {
+      cwd = message.cwd;
+      if (message.error) setStatus(message.error, true);
+      availability();
+      return;
+    }
     if (message.type === 'editor-saved') {
       const pending = editorSaves.get(message.id);
       editorSaves.delete(message.id);
@@ -217,11 +260,24 @@ function boot() {
       ready = true;
       cwd = message.cwd;
       if (initial) {
-        // Replace the build-time transcript only when the live startup commands finish.
+        // Keep static content available until the shell can replay its startup.
         releaseDownloads(transcript);
         transcript.replaceChildren();
-        for (const result of message.startup) output(commandBlock(result.command, HOME), result);
         initial = false;
+        revealShell();
+        for (const result of message.startup) {
+          const shown =
+            result.documents?.length === 1
+              ? displayCat(result.documents[0].path) + ' | render'
+              : result.command;
+          if (!(await typeCommand(shown, false))) break;
+          input.value = '';
+          paintInput();
+          const block = commandBlock(shown, result.cwd || cwd);
+          output(block, result);
+        }
+        if (transcript.firstElementChild)
+          window.history.replaceState({ terminalEntry: transcript.firstElementChild.id }, '');
       }
       setStatus(message.warning || 'web · files stay in this browser', Boolean(message.warning));
       availability();
@@ -273,7 +329,12 @@ function boot() {
         );
       availability();
       input.focus({ preventScroll: true });
-      scrollToPrompt();
+      if (historyTarget) {
+        anchorPrompt(historyTarget);
+        historyTarget = undefined;
+      } else if (navigation && block) anchorPrompt(block, false);
+      else scrollToPrompt();
+      navigation = false;
     } else if (message.type === 'completion') {
       if (input.value !== completionLine || busy || typing) return;
       input.value = message.line;
@@ -281,6 +342,7 @@ function boot() {
         plain(commandBlock(input.value), message.choices.join('  ') + '\n');
       paintInput();
     } else if (message.type === 'error') {
+      if (initial) revealShell();
       clearTimeout(timeout);
       busy = false;
       setStatus(message.message, true);
@@ -288,6 +350,7 @@ function boot() {
     }
   };
   worker.onerror = () => {
+    revealShell();
     for (const pending of editorSaves.values())
       pending.reject(
         new Error('Shell worker stopped. Keep or copy the editor buffer before reloading.'),
@@ -311,6 +374,7 @@ function boot() {
     .catch(() => {
       if (worker !== startingWorker) return;
       startingWorker.terminate();
+      revealShell();
       setStatus('Could not load portfolio files. Reload to try again.', true);
     });
 }
@@ -374,7 +438,7 @@ function interrupt() {
   active = undefined;
   boot();
 }
-async function run(command: string, shown = command) {
+async function run(command: string, shown = command, navigate = false) {
   if (!ready || busy || typing || editing || !command.trim()) return;
   history.push(shown);
   history = history.slice(-200);
@@ -392,12 +456,14 @@ async function run(command: string, shown = command) {
     await resetFilesystem();
     return;
   }
+  navigation = navigate;
   active = commandBlock(shown);
   busy = true;
   availability();
   timeout = setTimeout(interrupt, 7000);
   worker.postMessage({ type: 'exec', command, id: ++sequence });
-  scrollToPrompt();
+  if (navigate) anchorPrompt(active, false);
+  else scrollToPrompt();
 }
 async function resetFilesystem() {
   if (!ready || busy || typing || editing) return;
@@ -417,8 +483,8 @@ async function resetFilesystem() {
     availability();
   }
 }
-async function animatedRun(command: string, shown = command) {
-  if (!ready || busy || typing || editing) return;
+async function typeCommand(shown: string, navigate = true) {
+  if (navigate) autoScroll.begin();
   const previous = input.value;
   const controller = new AbortController();
   typing = controller;
@@ -426,10 +492,8 @@ async function animatedRun(command: string, shown = command) {
   paintInput();
   availability();
   input.focus({ preventScroll: true });
-  scrollToPrompt();
-  const delay = matchMedia('(prefers-reduced-motion: reduce)').matches
-    ? 0
-    : Math.min(35, 1600 / Array.from(shown).length);
+  if (navigate) anchorPrompt(form);
+  const delay = !animationsEnabled() ? 0 : Math.min(35, 1600 / Array.from(shown).length);
   const completed = await typeText(
     shown,
     (value) => {
@@ -440,12 +504,19 @@ async function animatedRun(command: string, shown = command) {
     { delay, signal: controller.signal },
   );
   typing = undefined;
-  availability();
-  if (completed) await run(command, shown);
-  else {
+  if (!completed) {
+    availability();
     input.value = previous;
     paintInput();
     input.focus({ preventScroll: true });
+  }
+  return completed;
+}
+async function animatedRun(command: string, shown = command, url?: string) {
+  if (!ready || busy || typing || editing) return;
+  if (await typeCommand(shown)) {
+    await run(command, shown, true);
+    if (url && active) window.history.pushState({ terminalEntry: active.id }, '', url);
   }
 }
 form.addEventListener('submit', (event) => {
@@ -530,11 +601,28 @@ document.addEventListener('click', (event) => {
   )
     return;
   event.preventDefault();
-  if (!busy && !typing)
+  if (!busy && !typing) {
+    if (isBlogPath(anchor.dataset.file!)) worker.postMessage({ type: 'blog-directory' });
     void animatedRun(
-      'render ' + quote(anchor.dataset.file!),
+      catCommand(anchor.dataset.file!) + ' | render',
       displayCat(anchor.dataset.file!) + ' | render',
+      new URL(anchor.href).pathname.startsWith('/blog/') ? anchor.href : undefined,
     );
+  }
+});
+window.history.scrollRestoration = 'manual';
+window.addEventListener('popstate', (event) => {
+  if (isBlogPath(location.pathname)) worker.postMessage({ type: 'blog-directory' });
+  const target = document.getElementById(event.state?.terminalEntry);
+  if (!target) {
+    // A reloaded page or trimmed scrollback has no retained entry to restore.
+    location.reload();
+    return;
+  }
+  if (typing) typing.abort();
+  autoScroll.begin();
+  if (busy) historyTarget = target;
+  else anchorPrompt(target);
 });
 document.querySelector('.terminal')!.addEventListener('click', (event) => {
   const target = event.target as Element;

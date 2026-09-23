@@ -1,6 +1,13 @@
 import { readDisplayConfig } from './display-config';
 import { bloomPreference, defaultBloom, setCrtBloom } from './crt-bloom';
 
+// Hide the static transcript before first paint; recover if the client cannot boot.
+document.documentElement.dataset.shellBoot = 'pending';
+document.documentElement.dataset.animations = readDisplayConfig(defaultBloom()).animations
+  ? 'on'
+  : 'off';
+setTimeout(() => delete document.documentElement.dataset.shellBoot, 8000);
+
 function setupCurvature() {
   document.documentElement.dataset.crt = readDisplayConfig(defaultBloom()).crt ? 'on' : 'off';
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

@@ -33,10 +33,11 @@ test('latest posts paginate at ten and every preview links to its post markdown'
   await buildBlog(root);
   const index = await Bun.file(join(root, 'INDEX.md')).text();
   expect(index.match(/^## /gm)).toHaveLength(10);
+  expect(index).not.toContain('[Blog](INDEX.md)');
   expect(index.indexOf('Post 11')).toBeLessThan(index.indexOf('Post 10'));
   expect(index).not.toContain('Second paragraph');
   const html = renderMarkdown(index, '/home/web/blog/INDEX.md');
-  expect(html).toContain(`href="/home/web/blog/${id(11)}/INDEX.md"`);
+  expect(html).toContain(`href="https://panicek.sk/blog/${id(11)}/"`);
   expect(html).toContain(`src="/home/web/blog/${id(11)}/cover.svg"`);
   expect(html).toContain('>First paragraph with a link.</a>');
   expect(html).toContain('/home/web/blog/pages/2/INDEX.md');
