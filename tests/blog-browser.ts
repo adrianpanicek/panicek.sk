@@ -18,7 +18,7 @@ for (let n = 1; n <= 11; n++) {
   const id = `post-${n}`;
   await Bun.write(
     join(blog, id, 'INDEX.md'),
-    `---\ntitle: Test post ${n}\ndate: 2026-09-${String(n).padStart(2, '0')}\ntags: [Example]\nthumbnail: cover.svg\n---\n\n# Test post ${n}\n\nOpening paragraph ${n}.\n\nFull post body ${n}.\n`,
+    `---\ntitle: Test post ${n}\ndate: 2026-09-${String(n).padStart(2, '0')}\ntags: [Example]\n${n === 11 ? 'on_render: "cat ~/ABOUT.md | render"\n' : ''}thumbnail: cover.svg\n---\n\n# Test post ${n}\n\nOpening paragraph ${n}.\n\nFull post body ${n}.\n`,
   );
   await Bun.write(
     join(blog, id, 'cover.svg'),
@@ -50,8 +50,8 @@ try {
     await page.waitForFunction(
       () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
     );
-    assert.equal(await page.locator('article').count(), 2);
-    assert.equal(await page.locator('article[data-source="/home/web/ABOUT.md"]').count(), 1);
+    assert.equal(await page.locator('article').count(), 1);
+    assert.equal(await page.locator('article[data-source="/home/web/ABOUT.md"]').count(), 0);
     assert.equal(await page.locator('article[data-source="/home/web/CONTACTS.md"]').count(), 0);
     assert.equal(await index.locator('h2').count(), 10);
     assert.equal(await index.locator('h2').first().textContent(), 'Test post 11');
@@ -61,6 +61,10 @@ try {
     await idle();
     assert.match((await post.textContent()) || '', /Full post body 11/);
     assert.doesNotMatch((await post.textContent()) || '', /thumbnail:/);
+    assert.equal(
+      await page.locator('article').last().getAttribute('data-source'),
+      '/home/web/ABOUT.md',
+    );
     await index.getByRole('link', { name: 'Older posts' }).click();
     const older = page.locator('article[data-source="/home/web/blog/pages/2/INDEX.md"]');
     await older.waitFor();
@@ -80,14 +84,17 @@ try {
     await idle();
     assert.equal(await tag.locator('h2').count(), 10);
     await tag.locator('a:has(img)').first().click();
-    await page.waitForFunction(() =>
-      Array.from(document.querySelectorAll('article'))
-        .at(-1)
-        ?.getAttribute('data-source')
-        ?.endsWith('post-11/INDEX.md'),
+    await page.waitForFunction(
+      () =>
+        Array.from(document.querySelectorAll('article')).at(-1)?.getAttribute('data-source') ===
+        '/home/web/ABOUT.md',
     );
     await idle();
-    assert.match((await page.locator('article').last().textContent()) || '', /Full post body 11/);
+    assert.match((await post.textContent()) || '', /Full post body 11/);
+    assert.equal(
+      await page.locator('article').last().getAttribute('data-source'),
+      '/home/web/ABOUT.md',
+    );
     const raw = await context.request.get(new URL('/blog/post-11/INDEX.md', server.url).href);
     assert.equal(raw.status(), 200);
     assert.match(await raw.text(), /tags: \[Example\]/);

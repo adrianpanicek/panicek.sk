@@ -567,12 +567,10 @@ following a Markdown link, or using `render`/`cat file.md | render`. Reading a r
 file or using plain `cat` does not execute it. Metadata stays hidden in rendered
 Markdown. Static HTML without JavaScript does not execute commands.
 
-Generated blog listings, paginated listings, and tag indexes set this field to
-`cat ~/ABOUT.md | render`. Thus direct blog visits show the requested index followed
-by the explicitly requested About output, without the normal contacts startup.
-The test post also opts in through its own metadata. Add the same field to future
-posts that should show About. Edit the Handlebars templates to change or remove
-the hook from generated listings.
+The test post opts in through its own metadata. Add the same field to individual
+posts that should show About. Generated blog listings, paginated listings, and tag
+indexes do not set a hook, so direct `/blog` visits show only the index. Individual
+post visits show the post followed by About, without the normal contacts startup.
 
 Hooks use the same sandbox and command limits as terminal commands. They can
 modify the browser's virtual files, so use them only for intentional page behavior.
