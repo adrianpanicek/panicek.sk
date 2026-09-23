@@ -129,3 +129,13 @@ test('startup contains shallow directory markers and symlinks without nested pag
 test('raw URL service worker stays small without bundling the shell engine', () => {
   expect(Bun.file('dist/service-worker.js').size).toBeLessThan(50000);
 });
+
+test('direct blog HTML contains only its index and the directory shell has no intro', async () => {
+  const blog = await Bun.file('dist/blog/index.html').text();
+  expect(blog).toContain('data-source="/home/web/blog/INDEX.md"');
+  expect(blog).not.toContain('data-source="/home/web/ABOUT.md"');
+  expect(blog).not.toContain('data-source="/home/web/CONTACTS.md"');
+  const shell = await Bun.file('dist/assets/directory.html').text();
+  expect(shell).not.toContain('data-source="/home/web/ABOUT.md"');
+  expect(shell).toContain('id="command-form"');
+});

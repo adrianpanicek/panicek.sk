@@ -5,7 +5,7 @@ import { commandRanges, highlightCommand } from './highlight';
 import { decodeContactTokens } from './contacts';
 import { typeText } from './typing';
 import { renderMarkdown, escapeHtml } from './markdown';
-import { catCommand, displayCat, displayPath, HOME, rawPath, quote } from './paths';
+import { catCommand, displayCat, displayPath, HOME, quote } from './paths';
 import { resetState } from './storage';
 import type { BaseFiles } from './filesystem';
 import { createApplicationController } from './applications';
@@ -221,13 +221,6 @@ function boot() {
         transcript.replaceChildren();
         for (const result of message.startup) output(commandBlock(result.command, HOME), result);
         initial = false;
-        if (location.pathname !== '/' && location.pathname !== '/index.html') {
-          try {
-            void run('render ' + quote(rawPath(location.pathname)));
-          } catch (error) {
-            setStatus(String(error), true);
-          }
-        }
       }
       setStatus(message.warning || 'web · files stay in this browser', Boolean(message.warning));
       availability();
@@ -311,7 +304,8 @@ function boot() {
     .then(async (response) => {
       if (!response.ok) throw new Error('Could not load portfolio files');
       const base: BaseFiles = await response.json();
-      if (worker === startingWorker) startingWorker.postMessage({ type: 'init', base });
+      if (worker === startingWorker)
+        startingWorker.postMessage({ type: 'init', base, pathname: location.pathname });
     })
     .catch(() => {
       if (worker !== startingWorker) return;

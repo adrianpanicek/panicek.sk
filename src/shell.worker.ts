@@ -9,7 +9,7 @@ import {
 } from './filesystem';
 import { loadState, commitState, type State } from './storage';
 import { createShell } from './shell';
-import { HOME, normalize, quote } from './paths';
+import { HOME, normalize, quote, rawPath } from './paths';
 
 let shell: ReturnType<typeof createShell>;
 let baseline: Snapshot;
@@ -18,7 +18,7 @@ let persistence = true;
 let queue = Promise.resolve();
 const send = (value: object) => postMessage(value);
 
-async function init(base: BaseFiles) {
+async function init(base: BaseFiles, pathname = '/') {
   const publishedFs = await createFilesystem(base);
   await createShell(publishedFs).exec(':');
   baseline = await snapshot(publishedFs);
@@ -39,9 +39,13 @@ async function init(base: BaseFiles) {
   }
   shell = createShell(fs);
   const startup = [];
-  for (const file of ['ABOUT.md', 'CONTACTS.md']) {
-    const result = await shell.exec(`cat ${file} | render`);
-    startup.push({ command: `cat ${file} | render`, ...result });
+  const commands =
+    pathname === '/' || pathname === '/index.html'
+      ? ['cat ABOUT.md | render', 'cat CONTACTS.md | render']
+      : ['render ' + quote(rawPath(pathname))];
+  for (const command of commands) {
+    const result = await shell.exec(command);
+    startup.push({ command, ...result });
   }
   send({ type: 'ready', cwd: shell.getCwd(), startup, warning });
 }
@@ -126,7 +130,7 @@ self.onmessage = (event) => {
   const message = event.data;
   queue = queue
     .then(async () => {
-      if (message.type === 'init') await init(message.base);
+      if (message.type === 'init') await init(message.base, message.pathname);
       else if (message.type === 'exec') await execute(message.command, message.id);
       else if (message.type === 'editor-save') {
         try {

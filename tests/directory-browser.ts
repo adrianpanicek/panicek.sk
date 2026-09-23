@@ -7,6 +7,18 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 });
 try {
+  const staticContext = await browser.newContext({ javaScriptEnabled: false });
+  for (const path of ['/blog', '/home/web/blog']) {
+    const direct = await staticContext.newPage();
+    await direct.goto(base + path);
+    assert.equal(await direct.locator('article').count(), 1);
+    assert.equal(
+      await direct.locator('article').getAttribute('data-source'),
+      '/home/web/blog/INDEX.md',
+    );
+    await direct.close();
+  }
+  await staticContext.close();
   const context = await browser.newContext();
   const page = await context.newPage();
   const requests: string[] = [];
@@ -44,6 +56,7 @@ try {
       ?.textContent?.includes('Local blog'),
   );
   assert.match((await page.locator('article').last().textContent())!, /Local blog/);
+  assert.equal(await page.locator('article').count(), 1);
   const fresh = await browser.newPage();
   await fresh.goto(base + '/home/web/blog/');
   await fresh.locator('article[data-source="/home/web/blog/INDEX.md"]').waitFor();

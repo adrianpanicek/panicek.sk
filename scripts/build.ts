@@ -263,6 +263,21 @@ await Bun.write(
     removeComments: true,
   }),
 );
+// A neutral shell for service-worker navigations, including locally created directories.
+const directoryHtml = html
+  .replace(transcript, '')
+  .replace(
+    /<noscript>[\s\S]*?<\/noscript>/,
+    '<noscript>Enable JavaScript to browse this directory.</noscript>',
+  );
+await Bun.write(
+  join(out, 'assets/directory.html'),
+  await minify(directoryHtml, {
+    collapseWhitespace: true,
+    conservativeCollapse: true,
+    removeComments: true,
+  }),
+);
 // Physical shortcuts contain only generated, in-tree targets. Remote data contains no symlinks.
 for (const [path, { target }] of Object.entries(aliases)) {
   if (path === '/~') continue;
@@ -274,7 +289,24 @@ for (const path of [
   '/~',
   ...directories.map((path) => '/~' + path.slice(HOME.length)),
 ]) {
-  await Bun.write(join(out, path, 'index.html'), await Bun.file(join(out, 'index.html')).bytes());
+  const canonical = path === '/~' ? HOME : path.startsWith('/~/') ? HOME + path.slice(2) : path;
+  const source = canonical + '/INDEX.md';
+  const body =
+    typeof files[source] === 'string'
+      ? `<section class="entry"><article class="markdown" data-source="${escapeHtml(source)}">${renderMarkdown(textFile(source), source, ORIGIN, imageDimensions)}</article></section>`
+      : '';
+  const page = directoryHtml.replace(
+    '<div id="transcript" aria-label="Terminal transcript"></div>',
+    `<div id="transcript" aria-label="Terminal transcript">${body}</div>`,
+  );
+  await Bun.write(
+    join(out, path, 'index.html'),
+    await minify(page, {
+      collapseWhitespace: true,
+      conservativeCollapse: true,
+      removeComments: true,
+    }),
+  );
 }
 console.log(
   `Built ${published.length} portfolio files, raw home paths, metadata, and browser bundles in dist/`,

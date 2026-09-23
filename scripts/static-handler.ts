@@ -51,9 +51,13 @@ export function staticHandler(directory: string) {
             { headers: { 'Cache-Control': 'no-cache' } },
           );
         }
-        return new Response(Bun.file(resolve(root, 'index.html')), {
-          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
-        });
+        const index = Bun.file(resolve(physical, 'index.html'));
+        return new Response(
+          (await index.exists()) ? index : Bun.file(resolve(root, 'assets/directory.html')),
+          {
+            headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+          },
+        );
       }
       const file = Bun.file(physical);
       const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`;

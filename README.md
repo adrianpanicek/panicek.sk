@@ -541,3 +541,9 @@ on the same origin. Existing `portfolio:crt` and `portfolio:bloom` preferences a
 read for compatibility and carried into the shared configuration on the next
 change. If browser storage is blocked or corrupted, the controls still work and
 use browser defaults when no valid saved choice is available.
+
+Direct directory URLs, such as `/blog` and `/home/web/blog`, open only that
+directory's index or listing. The homepage introduction and contacts load only
+at `/` or `/index.html`. Published directories with `INDEX.md` also prerender
+that document in their HTML; service-worker directory navigation starts with an
+empty shell while the current local or published content loads.

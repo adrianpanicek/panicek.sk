@@ -43,7 +43,7 @@ sw.addEventListener('fetch', (event) => {
         const fs = remoteSnapshot(base, state.overlay);
         if (event.request.mode === 'navigate') {
           const path = await physicalPath(rawPath(url.pathname), fs);
-          if ((await fs.stat(path)).isDirectory) return fetch('/index.html');
+          if ((await fs.stat(path)).isDirectory) return fetch('/assets/directory.html');
         }
         const response = await readRaw(url.pathname, fs);
         if (event.request.destination === 'image' && response.ok) {

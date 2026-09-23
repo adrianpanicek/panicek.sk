@@ -36,3 +36,15 @@ test('preview matches autoindex and refuses symlink escapes', async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('directory routes serve their prerendered index rather than the homepage', async () => {
+  const root = await mkdtemp('/tmp/portfolio-directory-');
+  try {
+    await Bun.write(root + '/index.html', 'Homepage');
+    await Bun.write(root + '/blog/index.html', 'Blog only');
+    const response = await staticHandler(root)(new Request('http://localhost/blog/'));
+    expect(await response.text()).toBe('Blog only');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

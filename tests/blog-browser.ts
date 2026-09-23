@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import { strict as assert } from 'node:assert';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildBlog } from '../scripts/build-blog';
@@ -9,6 +9,9 @@ import { staticHandler } from '../scripts/static-handler';
 // Fixture posts are added only to a disposable deployment, never to authored content.
 const root = await mkdtemp(join(tmpdir(), 'blog-browser-'));
 await cp('dist', root, { recursive: true, verbatimSymlinks: true });
+// Actions artifacts expand symlinks; point the fixture shortcut at its replaced content.
+await rm(join(root, 'blog'), { recursive: true, force: true });
+await symlink('./home/web/blog', join(root, 'blog'));
 const blog = join(root, 'home/web/blog');
 await rm(blog, { recursive: true, force: true });
 for (let n = 1; n <= 11; n++) {
@@ -47,6 +50,8 @@ try {
     await page.waitForFunction(
       () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
     );
+    assert.equal(await page.locator('article').count(), 1);
+    assert.equal(await page.locator('article[data-source="/home/web/ABOUT.md"]').count(), 0);
     assert.equal(await index.locator('h2').count(), 10);
     assert.equal(await index.locator('h2').first().innerText(), 'Test post 11');
     await index.getByRole('link', { name: 'Opening paragraph 11.', exact: true }).click();
