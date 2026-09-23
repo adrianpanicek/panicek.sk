@@ -554,13 +554,18 @@ footer button:hover {
   color: #d0d6de;
 }
 
-.markdown img {
+.markdown img,
+.markdown .crt-image {
   display: block;
   width: 100%;
   max-width: 100%;
   height: auto;
   margin: 0.75em 0;
   border-radius: 3px;
+}
+
+.markdown .crt-image > img {
+  margin: 0;
 }
 
 .downloads {
@@ -635,23 +640,23 @@ footer button:hover {
   }
 }
 
-.markdown img.image-right {
+.markdown .image-right {
   float: right;
   margin: 0 0 1em 2ch;
 }
 
-.markdown img.image-left {
+.markdown .image-left {
   float: left;
   margin: 0 2ch 1em 0;
 }
 
-.markdown img.image-center {
+.markdown .image-center {
   margin-inline: auto;
 }
 
 @media (max-width: 520px) {
-  .markdown img.image-right,
-  .markdown img.image-left {
+  .markdown .image-right,
+  .markdown .image-left {
     float: none;
     margin: 0.75em 0;
   }

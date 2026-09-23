@@ -50,6 +50,11 @@ try {
     'none',
   );
   await page.screenshot({ path: '.artifacts/crt-on.png', fullPage: true });
+  assert.equal(
+    await page.locator('.crt-refresh-overlay').isVisible(),
+    false,
+    'Chromium must not show a second refresh band',
+  );
   const screen = page.locator('.crt-screen');
   const screenBefore = await screen.boundingBox();
   const contentBefore = await page.locator('#transcript').boundingBox();

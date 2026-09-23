@@ -11,6 +11,12 @@ try {
   const page = await browser.newPage();
   const requests: string[] = [];
   page.on('request', (r) => requests.push(new URL(r.url()).pathname));
+  await page.route('**/filesystem.json', async (route) => {
+    const response = await route.fetch();
+    const files = await response.json();
+    files['/home/web/programs'] = { directory: true };
+    await route.fulfill({ json: files });
+  });
   await page.goto(base);
   const idle = () =>
     page.waitForFunction(
@@ -24,7 +30,11 @@ try {
   const run = async (command: string) => {
     await input.fill(command);
     await input.press('Enter');
-    await idle();
+    await idle().catch(async (error) => {
+      console.error('Program command failed:', command);
+      console.error(await page.locator('.entry').last().innerText());
+      throw error;
+    });
   };
   const install = async (source: string) => {
     await run(`cat > /tmp/test.js <<'SCRIPT'\n${source}\nSCRIPT\nchmod +x /tmp/test.js`);
@@ -41,6 +51,12 @@ try {
     'hello world',
   );
   assert.ok(!requests.some((path) => path.startsWith('/_files/home/web/programs/')));
+  await page.route('**/_files/home/web/programs/', (route) =>
+    route.fulfill({ json: [{ name: 'hello', type: 'file', size: 73 }] }),
+  );
+  await page.route('**/_files/home/web/programs/hello', (route) =>
+    route.fulfill({ body: '#!/usr/bin/env browser-js\napi.print(`Hello, ${api.args[0]}!`);\n' }),
+  );
   await run('./programs/hello lazy');
   assert.match(await page.locator('.entry').last().innerText(), /Hello, lazy!/);
   assert.ok(requests.includes('/_files/home/web/programs/'));
@@ -85,7 +101,8 @@ try {
     1,
   ); // bootstrap CSP meta only
   assert.ok(!requests.includes('/leak'));
-  await page.locator('#stop').click();
+  // Exercise the sandbox's keyboard interruption path after interacting with its view.
+  await safe.press('Control+c');
   await idle();
   // Minimal raw Wasm: exported main returns 7.
   await run(

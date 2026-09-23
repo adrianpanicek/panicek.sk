@@ -4,3 +4,5 @@ dist/
 bun.lock
 content/
 public/
+# These Handlebars templates emit Markdown, not HTML.
+scripts/templates/blog/*.md.hbs

@@ -1,9 +1,11 @@
+import { tmpdir } from 'node:os';
+import { buildBlog } from './build-blog';
 import { compile } from 'sass';
 import { imageSize } from 'image-size';
 import { brotliCompressSync, constants } from 'node:zlib';
 import { minify } from 'html-minifier-terser';
 import { SYSTEM_FILES } from '../src/downloads';
-import { mkdir, rm, cp, readdir, symlink } from 'node:fs/promises';
+import { mkdir, rm, cp, readdir, symlink, mkdtemp } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { renderMarkdown, escapeHtml } from '../src/markdown';
 import { encode } from '../src/bytes';
@@ -91,7 +93,15 @@ async function walk(dir: string, prefix = '') {
     }
   }
 }
-await walk('content');
+// Generate indexes in a temporary copy so development watches and authored files stay stable.
+const stagedContent = await mkdtemp(join(tmpdir(), 'panicek-content-'));
+try {
+  await cp('content', stagedContent, { recursive: true });
+  await buildBlog(join(stagedContent, 'blog'));
+  await walk(stagedContent);
+} finally {
+  await rm(stagedContent, { recursive: true, force: true });
+}
 for (const [path, text] of Object.entries(SYSTEM_FILES)) {
   files[path] = text;
   await Bun.write(join(out, path), text);
@@ -243,7 +253,8 @@ const html = `<!doctype html>
 <body><script>const crtFilter=document.querySelector(".crt-filter");if(crtFilter)document.body.prepend(crtFilter);</script><div class="crt-viewport"><div class="crt-screen" aria-hidden="true"></div><main><div class="terminal"><div id="transcript" aria-label="Terminal transcript">${transcript}</div>
 <form id="command-form" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" hidden><label for="command"><span class="user">web</span>@<span class="host">panicek.sk</span> <span id="cwd" class="cwd">~</span> <span id="exit-status"></span>$ <span class="sr-only">Shell command</span></label><div class="input-wrap"><div id="input-highlight" aria-hidden="true"></div><textarea rows="1" id="command" name="command" aria-label="Shell command" placeholder=" " spellcheck="false" autocapitalize="none" autocorrect="off" autocomplete="off" maxlength="16384" disabled></textarea></div></form>
 <noscript><p>Read the files above or <a href="/home/web/CAREER.md">open my career history</a>. Enable JavaScript to explore the interactive shell.</p></noscript></div>
-<footer><span id="status" role="status">Personal portfolio · plain files, open to explore</span><span id="shell-controls" hidden><button id="help" type="button">help</button> <button id="stop" type="button" hidden>interrupt</button> <button id="reset-filesystem" type="button">reset filesystem</button></span><button id="crt-toggle" type="button" aria-label="CRT effect" aria-pressed="true" hidden>crt: on</button><a href="/home/web/ABOUT.md">raw</a><span aria-hidden="true">·</span><a href="/files.json">files</a><span aria-hidden="true">·</span><a href="/llms.txt">for agents</a></footer></main></div></body></html>`;
+<div class="shell-status"><span id="status" role="status" class="sr-only">Personal portfolio · plain files, open to explore</span><button id="stop" type="button" hidden>interrupt</button></div>
+<footer><span id="shell-controls" hidden><button id="reset-filesystem" type="button">reset filesystem</button></span><button id="crt-toggle" type="button" aria-label="CRT effect" aria-pressed="true" hidden>crt: on</button><button id="bloom-toggle" type="button" aria-label="Bloom effect" aria-pressed="false" hidden>bloom: off</button></footer></main></div><div class="crt-refresh-overlay" aria-hidden="true"></div></body></html>`;
 await Bun.write(
   join(out, 'index.html'),
   await minify(html, {

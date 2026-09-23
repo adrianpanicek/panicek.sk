@@ -1,4 +1,5 @@
 import { setupCrt } from './crt';
+import { setupCrtImages } from './crt-image';
 import { countVisitor } from './visitors';
 import { commandRanges, highlightCommand } from './highlight';
 import { decodeContactTokens } from './contacts';
@@ -10,6 +11,7 @@ import type { BaseFiles } from './filesystem';
 import { createApplicationController } from './applications';
 
 setupCrt();
+setupCrtImages(document);
 void countVisitor();
 
 const transcript = document.querySelector<HTMLElement>('#transcript')!;
@@ -79,6 +81,7 @@ function paintHighlight() {
 function setStatus(message: string, warning = false) {
   status.textContent = message;
   status.classList.toggle('warning', warning);
+  status.classList.toggle('sr-only', !warning);
 }
 function availability() {
   input.disabled = !ready || editing || applications.state !== 'idle';
@@ -114,6 +117,7 @@ function formatted(block: HTMLElement, text: string, source: string, force = fal
     article.className = error ? 'markdown error' : 'markdown';
     article.dataset.source = source;
     article.innerHTML = renderMarkdown(clean, source, location.origin);
+    setupCrtImages(article);
     block.append(article);
   } else plain(block, clean, error);
 }
@@ -550,7 +554,6 @@ document.querySelector('.terminal')!.addEventListener('click', (event) => {
   input.focus({ preventScroll: true });
 });
 stop.addEventListener('click', interrupt);
-document.querySelector('#help')!.addEventListener('click', () => void animatedRun('help'));
 resetFilesystemButton.addEventListener('click', () => void resetFilesystem());
 shellControls.hidden = false;
 form.hidden = false;

@@ -1,5 +1,6 @@
 import { Marked, Renderer } from 'marked';
 import { resolveLink } from './paths';
+import { splitFrontmatter } from './frontmatter';
 
 export type ImageDimensions = Record<string, { width: number; height: number }>;
 declare const IMAGE_DIMENSIONS: ImageDimensions;
@@ -49,6 +50,7 @@ export function renderMarkdown(
 ): string {
   if (!withinMarkdownBudget(text))
     return `<p class="scrollback-note">Large output shown as plain text to keep the terminal responsive.</p><pre class="output">${escapeHtml(text)}</pre>`;
+  text = splitFrontmatter(text).body;
   const renderer = new Renderer();
   renderer.html = ({ text }) => escapeHtml(text);
   renderer.image = ({ href, text, title }) => {

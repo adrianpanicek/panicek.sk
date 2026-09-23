@@ -1,0 +1,20 @@
+# {{md title}}
+
+[Blog]({{blogUrl}}) · [Tags]({{tagsUrl}})
+
+{{#each posts}}
+## [{{md title}}]({{url}})
+
+{{date}}{{#if tags}} · {{#each tags}}[{{md name}}]({{url}}){{#unless @last}}, {{/unless}}{{/each}}{{/if}}
+
+{{#if thumbnailUrl}}
+[![{{md title}}]({{thumbnailUrl}} "width=240")]({{url}})
+
+{{/if}}
+[{{md excerpt}}]({{url}})
+
+{{else}}
+No posts yet.
+
+{{/each}}
+Page {{page}} of {{pageCount}}{{#if newerUrl}} · [Newer posts]({{newerUrl}}){{/if}}{{#if olderUrl}} · [Older posts]({{olderUrl}}){{/if}}

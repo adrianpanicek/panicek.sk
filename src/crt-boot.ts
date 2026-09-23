@@ -1,11 +1,8 @@
+import { readDisplayConfig } from './display-config';
+import { bloomPreference, defaultBloom, setCrtBloom } from './crt-bloom';
+
 function setupCurvature() {
-  try {
-    document.documentElement.dataset.crt =
-      localStorage.getItem('portfolio:crt') === 'off' ? 'off' : 'on';
-  } catch {}
-  // Gecko repeatedly rasterizes the viewport-wide SVG filter during scrolling
-  // and even caret blinking. Keep the static CRT styling without that filter.
-  if (CSS.supports('-moz-appearance', 'none')) return;
+  document.documentElement.dataset.crt = readDisplayConfig(defaultBloom()).crt ? 'on' : 'off';
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'crt-filter');
   svg.setAttribute('aria-hidden', 'true');
@@ -15,16 +12,10 @@ function setupCurvature() {
     <filter id="crt-curve" filterUnits="userSpaceOnUse" x="0" y="0" color-interpolation-filters="sRGB">
       <feImage id="crt-curve-map" x="0" y="0" preserveAspectRatio="none" result="curve"/>
       <feDisplacementMap id="crt-curve-displacement" in="SourceGraphic" in2="curve" xChannelSelector="R" yChannelSelector="G" result="curved"/>
-      <feComponentTransfer in="curved" result="highlights">
-        <feFuncR type="linear" slope="1.5" intercept="-0.35"/>
-        <feFuncG type="linear" slope="1.5" intercept="-0.35"/>
-        <feFuncB type="linear" slope="1.5" intercept="-0.35"/>
-      </feComponentTransfer>
-      <feGaussianBlur id="crt-bloom" in="highlights" stdDeviation="2.2" result="bloom"/>
-      <feComposite in="bloom" in2="curved" operator="arithmetic" k1="0" k2="0.3" k3="1" k4="0"/>
     </filter>
   </defs>`;
   document.head.append(svg);
+  setCrtBloom(bloomPreference());
   const filter = document.querySelector('#crt-curve');
   const image = document.querySelector('#crt-curve-map');
   const displacement = document.querySelector('#crt-curve-displacement');

@@ -38,3 +38,4 @@ You can also just click the links.
 
 - [Career](CAREER.md) — more about my work
 - [Contacts](CONTACTS.md) — say hello
+- [Blog](blog/INDEX.md) — latest posts and notes

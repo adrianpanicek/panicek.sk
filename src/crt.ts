@@ -1,14 +1,29 @@
+import { readDisplayConfig, saveDisplayConfig } from './display-config';
+import { bloomPreference, defaultBloom, setCrtBloom } from './crt-bloom';
 import { setupCrtPointer } from './crt-pointer';
 
 export function setupCrt() {
   setupCrtPointer();
+  const bloomToggle = document.querySelector<HTMLButtonElement>('#bloom-toggle');
+  if (bloomToggle) {
+    let bloom = bloomPreference();
+    const paintBloom = () => {
+      setCrtBloom(bloom);
+      bloomToggle.setAttribute('aria-pressed', String(bloom));
+      bloomToggle.textContent = `bloom: ${bloom ? 'on' : 'off'}`;
+      bloomToggle.title = 'On: highlight bloom. Off: text shadows and image glow.';
+    };
+    bloomToggle.hidden = false;
+    paintBloom();
+    bloomToggle.addEventListener('click', () => {
+      bloom = !bloom;
+      paintBloom();
+      saveDisplayConfig({ bloom }, defaultBloom());
+    });
+  }
   const toggle = document.querySelector<HTMLButtonElement>('#crt-toggle');
   if (!toggle) return;
-  const key = 'portfolio:crt';
-  let enabled = true;
-  try {
-    enabled = localStorage.getItem(key) !== 'off';
-  } catch {}
+  let enabled = readDisplayConfig(defaultBloom()).crt;
   const paint = () => {
     delete document.documentElement.dataset.crtPointer;
     document.documentElement.dataset.crt = enabled ? 'on' : 'off';
@@ -25,8 +40,6 @@ export function setupCrt() {
     paint();
     if (enabled && curved) main.scrollTop = scroll;
     else window.scrollTo(0, scroll);
-    try {
-      localStorage.setItem(key, enabled ? 'on' : 'off');
-    } catch {}
+    saveDisplayConfig({ crt: enabled }, defaultBloom());
   });
 }

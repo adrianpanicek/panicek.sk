@@ -22,6 +22,6 @@ export async function countVisitor() {
     const counter = document.createElement('span');
     counter.id = 'visitor-count';
     counter.textContent = `visitors: ${visitors.toLocaleString()}`;
-    document.querySelector('footer')?.append(counter);
+    document.querySelector('#crt-toggle')?.before(counter);
   } catch {}
 }

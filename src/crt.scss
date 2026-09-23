@@ -44,7 +44,26 @@
   }
 }
 
-.crt-screen {
+@mixin crt-refresh-band {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--crt-refresh-height, 14%);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(210, 235, 255, 0.008) 45%,
+    rgba(210, 235, 255, 0.025) 85%,
+    transparent
+  );
+  mask-image: repeating-linear-gradient(to bottom, #000 0 2px, rgba(0, 0, 0, 0.4) 2px 4px);
+  animation: crt-refresh 8s steps(var(--crt-refresh-steps, 240)) infinite;
+}
+
+.crt-screen,
+.crt-refresh-overlay {
   display: none;
   position: fixed;
   inset: 0;
@@ -108,21 +127,7 @@
     }
 
     &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: var(--crt-refresh-height, 14%);
-      background: linear-gradient(
-        to bottom,
-        transparent,
-        rgba(210, 235, 255, 0.008) 45%,
-        rgba(210, 235, 255, 0.025) 85%,
-        transparent
-      );
-      mask-image: repeating-linear-gradient(to bottom, #000 0 2px, rgba(0, 0, 0, 0.4) 2px 4px);
-      animation: crt-refresh 8s steps(var(--crt-refresh-steps, 240)) infinite;
+      @include crt-refresh-band;
     }
   }
 }
@@ -136,13 +141,64 @@
   }
 }
 
-// Match the lightweight Gecko path in crt-boot.ts. A static overlay avoids
-// continuous full-screen work while leaving scanlines and edge shading intact.
+@media screen {
+  // Glow on visible text only: the transparent command textarea overlays
+  // #input-highlight and must not paint another copy of the input.
+  :root[data-crt='on'][data-bloom='off']
+    :is(#transcript, #input-highlight, #command-form > label, footer, #vim-editor) {
+    text-shadow: 0 0 5px rgb(230 237 243 / 35%);
+  }
+
+  :root[data-crt='on'][data-bloom='off'] .crt-image-bloom[data-ready='true'] {
+    display: block;
+    opacity: 0.6;
+    transform: scale(1.08);
+    filter: blur(5px);
+    mask-image:
+      linear-gradient(to right, transparent, #000 8%, #000 92%, transparent),
+      linear-gradient(to bottom, transparent, #000 8%, #000 92%, transparent);
+    mask-composite: intersect;
+  }
+}
+
+// In Gecko, animate above the filtered viewport so the band doesn't invalidate
+// the full-screen distortion. Static scanlines and shading stay curved beneath it.
 @supports (-moz-appearance: none) {
   :root[data-crt='on'] .crt-screen::after {
     display: none;
     animation: none;
   }
+
+  @media screen and (prefers-reduced-motion: no-preference) {
+    :root[data-crt='on']:not([data-application='doom']) .crt-refresh-overlay {
+      display: block;
+
+      &::after {
+        @include crt-refresh-band;
+        will-change: transform;
+      }
+    }
+  }
+}
+
+.crt-image {
+  position: relative;
+  isolation: isolate;
+
+  > img {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.crt-image-bloom {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

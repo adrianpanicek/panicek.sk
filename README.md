@@ -25,8 +25,9 @@ bun test            # unit and generated-output tests; build first
 bun run test:browser
 ```
 
-Browser tests require Chromium. Install it with `bunx playwright install chromium`
-or point `CHROMIUM_PATH` at an existing executable. Start the preview server before
+Browser tests require Chromium and Firefox. Install them with
+`bunx playwright install chromium firefox`. `CHROMIUM_PATH` can point to an existing
+Chromium executable; Firefox uses the Playwright installation. Start the preview server before
 running them; `TEST_URL` overrides the default local URL. Screenshots are saved in
 `.artifacts/`.
 
@@ -36,11 +37,77 @@ as the shell is ready.
 
 Use `bun run format` to format source files and `bun run format:check` to verify
 formatting. GitHub Actions installs from the lockfile, checks formatting and types,
-builds, and runs unit and Chromium browser tests on pushes and pull requests.
-Browser tests cover the terminal, Vim, and downloads against the built artifact.
+builds, and runs unit, Chromium, and Firefox browser tests on pushes and pull requests.
+Chromium tests cover the terminal, Vim, downloads, executables, visitor counter,
+and DOOM against the built artifact. Firefox coverage currently checks the shell,
+rendered CRT distortion, shadow-mode bloom omission, scrolling, toggle persistence, curved
+mouse pointer, and narrow layout.
 `bun run test:browser:ci` starts and stops its own preview server. Publishing
 requires all tests to pass. Jobs use Ubuntu 24.04, and browser diagnostics are
 retained for seven days.
+
+## Browser feature support
+
+This matrix describes the current implementation, reviewed on 2026-09-23, for
+modern browser engines with JavaScript enabled.
+
+- ✅ Enabled by the website; not a guarantee that every browser/version was tested.
+- 🟡 Expected or enabled but not verified in this browser.
+- ❌ Disabled by the website or unavailable; not necessarily a browser limitation.
+- ⚠️ A limitation was observed; see the notes below.
+
+| Website feature                                                          | Chrome / Edge / Chromium                             | Firefox (Gecko)                     | Safari (WebKit)                        |
+| ------------------------------------------------------------------------ | ---------------------------------------------------- | ----------------------------------- | -------------------------------------- |
+| Prerendered portfolio, published raw files, metadata and social previews | ✅                                                   | ✅                                  | 🟡                                     |
+| Shell commands, pipes, redirects, completion, history and interruption   | ✅                                                   | ✅ basic commands tested            | 🟡                                     |
+| Input highlighting, multiline input and native selection/copy/paste      | ✅                                                   | 🟡                                  | 🟡                                     |
+| Markdown rendering, internal navigation and decoded contacts             | ✅                                                   | 🟡                                  | 🟡                                     |
+| Images, responsive image layout and lazy loading                         | ✅                                                   | 🟡                                  | 🟡                                     |
+| YouTube embeds and fallback links                                        | ✅ third-party access required                       | 🟡 third-party access required      | 🟡 third-party access required         |
+| Lazy directories, directory listings and nested files                    | ✅                                                   | 🟡                                  | 🟡                                     |
+| Local filesystem persistence and reset                                   | ✅ IndexedDB required                                | 🟡 IndexedDB required               | 🟡 IndexedDB required                  |
+| Raw URLs for local edits, new files and symlinks                         | ✅ service worker required                           | ⚠️ Uncontrolled-tab case; see below | 🟡 service worker required             |
+| Embedded Vim editor, save and unsaved-change protection                  | ✅                                                   | 🟡                                  | 🟡                                     |
+| File downloads with `save`, binary files and retry links                 | ✅ download permissions apply                        | 🟡 download permissions apply       | 🟡 download permissions apply          |
+| Sandboxed JavaScript executables and interactive program views           | ✅                                                   | 🟡                                  | 🟡                                     |
+| Raw WebAssembly executables                                              | ✅ WebAssembly required                              | 🟡 WebAssembly required             | 🟡 WebAssembly required                |
+| DOOM game                                                                | ✅ desktop requirements below                        | 🟡 same requirements                | 🟡 same requirements                   |
+| DOOM WebGL curvature and bloom                                           | ✅                                                   | 🟡                                  | 🟡                                     |
+| CRT VGA font, static scanlines, phosphor texture and edge shading        | ✅                                                   | ✅                                  | 🟡                                     |
+| Terminal / Vim barrel distortion                                         | ✅ SVG filter                                        | ✅ Distortion-only SVG filter       | 🟡 SVG; visuals/performance unverified |
+| Terminal / Vim highlight bloom                                           | ✅                                                   | ✅ Optional; slower                 | 🟡                                     |
+| Phosphor-style text and image glow                                       | ✅ Via bloom                                         | ✅ 5px text and image glow          | 🟡                                     |
+| Terminal moving refresh band                                             | ✅                                                   | ✅ Separate flat overlay            | 🟡                                     |
+| Pixel-style CRT mouse pointer                                            | ✅ Curved CRT + mouse                                | ✅ Curved CRT + mouse               | 🟡                                     |
+| CRT toggle and remembered preference                                     | ✅ localStorage for persistence                      | ✅ localStorage for persistence     | 🟡 localStorage for persistence        |
+| Reduced-motion behavior                                                  | ✅ Band, caret and typing animation                  | ✅ Band, caret and typing animation | 🟡                                     |
+| Responsive terminal and editor layout                                    | ✅ narrow viewports tested                           | ✅ narrow terminal tested           | 🟡                                     |
+| Visitor counter                                                          | ✅ storage and collector required                    | 🟡 same requirements                | 🟡 same requirements                   |
+| gzip / Brotli asset delivery                                             | ✅ plain response fallback                           | ✅ plain response fallback          | 🟡 plain response fallback             |
+| Automated browser coverage                                               | ✅ Chromium suite; Chrome/Edge not separately tested | ✅ Shell/CRT suite                  | ❌                                     |
+
+Browser settings and device capabilities also matter:
+
+- Service-worker routes require HTTPS (or localhost), successful activation, and
+  browser storage. Published files still have static routes before activation.
+  Local edits stay in this browser; the service worker is not a full offline cache.
+  A supplemental Firefox Vim check found a tab without a controlling service
+  worker: edits persisted and raw navigation in a new tab worked, but a same-tab
+  fetch of a saved file returned the static 404. This also reproduced with CRT
+  off, so Firefox raw-file coverage remains incomplete independently of rendering.
+- Storage restrictions or clearing site data affect filesystem persistence,
+  remembered CRT settings, and visitor identity. Multiple automatic downloads
+  can require permission; transcript links let the visitor retry individual files.
+- DOOM requires WebAssembly and WebGL. Its launch gate requires a fine pointer,
+  no coarse primary pointer, and a viewport of at least 640×480; it expects a
+  physical keyboard. Touch-only phones/tablets are intentionally rejected.
+  Firefox's reduced terminal effects do **not** alter the separate DOOM shader.
+- With JavaScript disabled, the prerendered ABOUT page and published raw links
+  remain available; the shell, decoded contacts, Vim, programs, local filesystem
+  routes, visitor counter, and interactive CRT controls do not.
+- Mobile support follows the actual engine, not just the browser's brand.
+  These desktop test results do not certify Android or iOS devices; touch input
+  uses no custom CRT pointer in any engine.
 
 ## Edit the portfolio
 
@@ -207,10 +274,85 @@ The footer's
 `crt: on/off` button remembers the setting in this browser. Scanlines and the refresh band stay anchored to the viewport while content scrolls. Overlay layers never intercept input;
 the displacement map is generated once, and the filter stays viewport-sized.
 
-Firefox uses a lighter CRT mode with the same VGA font, static scanlines, and
-edge shading, but no SVG curvature/bloom filter or moving refresh band. It uses
-native page scrolling and the native cursor to avoid continuous full-screen
-rasterization during idle caret blinking and scrolling.
+`bloom: on` selects the original highlight-extraction SVG bloom; `bloom: off`
+selects the text shadows and image glow described below. Both modes keep
+distortion, and the choice persists in this browser. Firefox defaults to off
+for performance; other browsers default to on. The effects are never stacked.
+The footer contains reset filesystem, visitor count (when available), CRT and bloom controls.
+
+Firefox retains the same viewport-wide barrel distortion and curved mouse
+pointer, along with the VGA font, static scanlines, edge shading and blinking
+caret. By default its SVG graph contains only the displacement map and displacement stage;
+the highlight extraction, blur and arithmetic composite used for bloom are omitted.
+A centered 5px text shadow at 35% opacity adds glow to all visible terminal text,
+including the transcript, command line, footer and Vim content. Markdown images
+keep a sharp foreground above a small canvas copy of their own colors. The copy
+is enlarged by 8%, blurred by 5px, drawn at 60% opacity, and faded along all four
+edges. Its longest side is capped at 256 pixels and it is painted from the loaded
+image without another request or pixel readback. Animated images keep a static
+glow sample rather than repainting it every frame. This approximates bloom
+without extracting highlights inside the foreground image. Offset glyph
+copies are not used. The transparent command textarea is
+excluded to avoid drawing a second copy of the input. CRT-off and print disable
+the glow.
+The moving refresh band runs in a separate fixed overlay outside the filtered
+viewport. Only the band is flat; the content, scanlines and pointer stay curved.
+The overlay animates its transform, never intercepts input, and is hidden when
+CRT is off, reduced motion is requested, printing, or DOOM supplies its own band.
+Native HTML selection, links, input, images,
+and the Vim editor remain in place; no canvas reconstruction is involved.
+
+### Firefox distortion performance
+
+Before adding the independent refresh overlay, a local headless Firefox 155 test
+at 1920×1080 and device scale 1 measured equal five-second samples:
+23.96 → 0.98 CPU-seconds while idle with the caret visible,
+and 25.63 → 19.81 CPU-seconds during scripted scrolling, compared with the original
+bloom and refresh-band implementation. Both scrolling samples produced about
+60 animation frames per second. CPU-seconds sum work across browser processes
+and cores; these are environment-specific measurements, not a universal FPS or
+power guarantee.
+
+A follow-up five-second test of the distortion-only page measured 1.00 CPU-second
+idle with the band hidden and 2.03 with the independent overlay; scrolling used
+19.69 and 20.15 CPU-seconds respectively, at about 59–60 frames per second.
+Putting the animated band back inside the filter used 17.47 CPU-seconds idle in
+the preceding comparison. The overlay therefore adds some compositing cost,
+but avoids the much larger cost of filtering the animation with the whole page.
+
+The all-text glow prioritizes appearance. Earlier all-text blur trials slowed
+scrolling in Firefox; performance measurements above predate this stronger glow.
+Image glow uses a separate, downsampled color copy; neither effect implements
+full highlight extraction. A subsequent five-second comparison measured 2.35
+CPU-seconds idle and about 54 scrolling frames per second with the previous image
+drop shadow, versus 2.33 CPU-seconds idle and about 49 scrolling frames per second
+with the masked image copy. The new image appearance adds some scrolling cost;
+the earlier faster figures do not describe the current combination of effects.
+
+Mozilla tracks incomplete WebRender acceleration for these SVG filters in
+[bug 1896740](https://bugzilla.mozilla.org/show_bug.cgi?id=1896740), with details
+about `feDisplacementMap` and `feImage` in
+[bug 1972363, comment 6](https://bugzilla.mozilla.org/show_bug.cgi?id=1972363#c6).
+The Firefox path reduces the filter graph instead of disabling distortion.
+Removing the bloom primitives matters: merely bypassing bloom in the final
+composite left substantial work in our measurements. A viewport-sized source
+map and the legacy `filterRes` attribute did not provide a useful improvement,
+so the shared 256×256 displacement map is retained.
+
+The Firefox browser regression checks screenshot pixels to verify a straight
+source line actually bends, even before the client bundle loads. It also checks
+that bloom primitives are absent, the refresh band animates outside the filter,
+its visibility follows CRT/reduced-motion/DOOM/print state, and scrolling,
+pointer visibility, CRT toggling, shell input and narrow layouts work. Performance
+still depends on viewport size, device pixel ratio, hardware and browser version;
+the distortion-only mode is not as cheap as turning CRT off.
+
+A WebGL terminal remains a possible larger redesign, but is not required for
+this improvement. DOOM already uses its own WebGL compositor. Applying the same
+approach to live HTML would require a render surface plus matching selection,
+input, accessibility and pointer behavior: WebGL's
+[`texImage2D` inputs](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texImage2D)
+do not include an arbitrary live HTML tree.
 
 CRT mode uses WebPlus IBM VGA 8x16 by VileR, a pixel-outline reproduction of
 classic BIOS/VGA text-mode characters, at the existing responsive text size.
@@ -292,3 +434,110 @@ immediate portfolio pages and links to nested pages, so it does not preload blog
 bodies indirectly. Doom JavaScript and Wasm load only when launching `DOOM`.
 See [deployment instructions](docs/deployment.md#directory-pages-and-lazy-content)
 for the hosting requirements and traversal protections.
+
+## Blog
+
+Open `/blog` or `/home/web/blog` (trailing slashes also work). The build creates
+both the physical `dist/blog -> ./home/web/blog` symlink and the shell's
+`/blog -> /home/web/blog` symlink. The homepage includes a blog link.
+
+Create a directory yourself, for example `content/blog/my-first-post/`, and add
+an `INDEX.md` containing the post. Directory names become the post URLs; no IDs
+are generated. Keep the post's images and attachments in the same directory
+(subdirectories are supported). The first paragraph becomes the clickable preview.
+Use YAML frontmatter at the beginning of every post:
+
+```md
+---
+title: My post title
+date: 2026-09-23
+tags: [Rust, Electronics]
+thumbnail: cover.jpg
+---
+
+# My post title
+
+The first paragraph introduces the post. Its text links to this INDEX.md from
+both the main blog index and tag indexes.
+
+![A photograph](cover.jpg)
+
+[Download the attachment](schematic.pdf)
+```
+
+`title`, `date` (a valid `YYYY-MM-DD`), and `tags` (an array, possibly empty) are
+required. `thumbnail` is optional and must point to an image inside the post's
+own directory. With a thumbnail, the preview includes a linked image; without
+one, it contains the linked title and first paragraph. Inline formatting and
+links become plain text inside the clickable paragraph. Metadata stays in the raw
+Markdown file and is hidden when the terminal renders it. Tags are case-sensitive.
+All post directories are published; there is no draft or scheduled-publication flag.
+
+Every `bun run build` scans posts, validates their metadata, and generates:
+
+- `blog/INDEX.md`: latest posts, newest date first (directory name breaks date ties).
+- `blog/pages/2/INDEX.md`, etc.: older posts, with 10 posts per page.
+- `blog/tags/INDEX.md`: all tags and post counts.
+- `blog/tags/<tag-id>/INDEX.md`: posts for a tag, also paginated at 10.
+
+Tag IDs are stable hashes, so punctuation and Unicode tags have safe paths.
+Indexes are plain Markdown with relative links to post `INDEX.md` files.
+The existing terminal renderer handles previews and navigation.
+
+Generation runs in a temporary content copy before static publishing and lazy
+filesystem indexing; it does not rewrite source posts or trigger watch loops.
+`content/blog/INDEX.md` is a fallback placeholder; the build replaces it in the
+staged copy. `pages/` and `tags/` are reserved for generated output, rebuilt from
+current posts each time. Invalid metadata or missing thumbnail files fail the build
+with the offending post path. To generate indexes separately in a staging copy,
+run `bun run build:blog /path/to/staged/blog` (this replaces that directory's
+`INDEX.md`, `pages/`, and `tags/`).
+
+### Index templates
+
+Blog indexes use [Handlebars](https://handlebarsjs.com/guide/expressions.html) at
+build time. Edit these templates to change their Markdown layout:
+
+- `scripts/templates/blog/index.md.hbs`: blog pages and individual tag pages.
+- `scripts/templates/blog/tags.md.hbs`: the directory of tags and post counts.
+
+The development watcher rebuilds when either template changes. Handlebars is a
+build-only dependency; template files and the engine are not shipped to browsers.
+Post files remain ordinary Markdown and are not processed as templates.
+
+The listing template receives `title`, `blogUrl`, `tagsUrl`, `page`, `pageCount`,
+`newerUrl`, `olderUrl`, and `posts`. Each post has `title`, `date`, `excerpt`, `url`,
+`thumbnailUrl`, and `tags` (each with `name` and `url`). Optional URLs are `null`.
+The tags template receives `blogUrl` and `tags`, each with `name`, `url`, and `count`.
+All URLs are relative to the generated index, including pagination and tag pages.
+
+For example, a minimal listing template is:
+
+```handlebars
+#
+{{md title}}
+
+{{#each posts}}
+  ## [{{md title}}]({{url}}) [{{md excerpt}}]({{url}})
+
+{{else}}
+  No posts yet.
+{{/each}}
+```
+
+Use `{{md value}}` for text inside Markdown headings and link labels. HTML
+escaping is disabled because these templates produce Markdown; the `md` helper
+escapes Markdown punctuation and HTML characters without double escaping.
+Use URL fields directly, such as `({{url}})`. Normal Handlebars loops and
+conditionals (`each`, `if`, `unless`) are available. Strict template checking makes
+unknown fields fail the build instead of silently generating broken indexes.
+
+### Display preferences
+
+The CRT and bloom buttons save both choices in localStorage under
+`portfolio:config`, for example `{"crt":false,"bloom":true}`. The saved settings
+apply during early page startup and remain in effect across reloads and new tabs
+on the same origin. Existing `portfolio:crt` and `portfolio:bloom` preferences are
+read for compatibility and carried into the shared configuration on the next
+change. If browser storage is blocked or corrupted, the controls still work and
+use browser defaults when no valid saved choice is available.

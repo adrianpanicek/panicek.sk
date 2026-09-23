@@ -28,7 +28,8 @@ try {
   await input.press('Enter');
   await page.locator('article[data-source="/home/web/blog/INDEX.md"]').waitFor();
   await idle();
-  assert.match(await page.locator('article').last().innerText(), /No posts yet/);
+  const publishedIndex = await page.locator('article').last().innerText();
+  assert.match(publishedIndex, /Blog/);
   assert.ok(requests.includes('/_files/home/web/blog/'));
   assert.ok(requests.includes('/_files/home/web/blog/INDEX.md'));
   await input.fill("echo '# Local blog' > /blog/INDEX.md");
@@ -52,12 +53,12 @@ try {
     return (
       !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&
       document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
-      articles[articles.length - 1]?.innerText.includes('No posts yet')
+      articles[articles.length - 1]?.innerText.includes('Blog')
     );
   });
-  assert.match(
+  assert.equal(
     await fresh.locator('article[data-source="/home/web/blog/INDEX.md"]').last().innerText(),
-    /No posts yet/,
+    publishedIndex,
   );
   console.log('PASS directory URLs, nginx-style lazy loading, aliases and persisted edits');
 } finally {
