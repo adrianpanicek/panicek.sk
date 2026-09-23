@@ -2,6 +2,7 @@
 title: Test Article
 date: 2026-09-23
 tags: []
+on_render: "cat ~/ABOUT.md | render"
 ---
 
 # Test Article

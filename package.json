@@ -28,7 +28,8 @@
     "buffer": "^6.0.3",
     "fflate": "^0.8.3",
     "just-bash": "^3.4.2",
-    "marked": "^18.0.13"
+    "marked": "^18.0.13",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

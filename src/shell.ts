@@ -2,10 +2,12 @@ import { collectDownloads, type Download } from './downloads';
 import { Bash, type BashExecResult, type IFileSystem, type ExecOptions } from 'just-bash/browser';
 import { resolveExecutable, type ApplicationRequest } from './executables';
 import { HOME } from './paths';
+import { renderHook } from './render-hook';
 
 type ShellExecResult = BashExecResult & {
   documents: { path: string; text: string }[];
   downloads: Download[];
+  renderCommands: { command: string; result: ShellExecResult }[];
   editorPath?: string;
   application?: ApplicationRequest;
 };
@@ -125,80 +127,109 @@ export function createShell(fs: IFileSystem) {
       },
     ],
   });
+  async function exec(
+    command: string,
+    options: ExecOptions | undefined,
+    hooks: { seen: Set<string>; remaining: number; deadline: number },
+  ): Promise<ShellExecResult> {
+    reads.length = 0;
+    downloads.length = 0;
+    editorPath = undefined;
+    interactiveEditor = false;
+    rendered = undefined;
+    let markdown = false;
+    try {
+      const ast = engine.transform(command).ast;
+      const statements = ast.statements;
+      const pipeline = statements[0]?.pipelines[0];
+      const cmd = pipeline?.commands[0];
+      interactiveEditor =
+        statements.length === 1 &&
+        statements[0].pipelines.length === 1 &&
+        !statements[0].background &&
+        pipeline?.commands.length === 1 &&
+        !pipeline.timed &&
+        cmd?.type === 'SimpleCommand' &&
+        !cmd.redirections.length &&
+        ['vim', 'vi'].includes(cmd.name?.parts.map((part: any) => part.value || '').join('') || '');
+      const last = pipeline?.commands.at(-1);
+      markdown =
+        statements.length === 1 &&
+        statements[0].pipelines.length === 1 &&
+        !statements[0].background &&
+        !pipeline?.timed &&
+        last?.type === 'SimpleCommand' &&
+        !last.redirections.some((r) => !['<', '<<<', '<<', '<<-'].includes(r.operator)) &&
+        last.name?.parts.length === 1 &&
+        last.name.parts[0].type === 'Literal' &&
+        last.name.parts[0].value === 'render';
+
+      const executable = await resolveExecutable(ast, fs, cwd);
+      if (executable.kind === 'error')
+        return {
+          stdout: '',
+          stderr: executable.stderr,
+          exitCode: executable.exitCode,
+          env,
+          documents: [],
+          renderCommands: [],
+          downloads: [],
+          application: undefined,
+        };
+      if (executable.kind === 'application')
+        return {
+          stdout: '',
+          stderr: '',
+          exitCode: 0,
+          env,
+          documents: [],
+          renderCommands: [],
+          downloads: [],
+          application: executable.application,
+        };
+    } catch {}
+    const result = await engine.exec(command, { ...options, cwd, env, replaceEnv: true });
+    env = result.env;
+    cwd = result.env.PWD || cwd;
+    const documents: { path: string; text: string }[] = [];
+    const document = rendered as { path: string; text: string } | undefined;
+    if (markdown && result.exitCode === 0 && document && result.stdout === document.text)
+      documents.push(document);
+    const response: ShellExecResult = {
+      ...result,
+      documents,
+      renderCommands: [],
+      downloads: [...downloads],
+      editorPath: editorPath as string | undefined,
+      application: undefined,
+    };
+    if (documents.length) {
+      try {
+        const hook = renderHook(documents[0].text);
+        if (hook) {
+          const path = await fs.realpath(documents[0].path).catch(() => documents[0].path);
+          if (hooks.seen.has(path)) throw new Error('recursive on_render hook skipped');
+          if (hooks.remaining <= 0 || Date.now() >= hooks.deadline)
+            throw new Error('on_render execution limit reached');
+          hooks.seen.add(path);
+          hooks.remaining--;
+          const next = await exec(hook, options, hooks);
+          if (next.application || next.editorPath) {
+            next.stderr += 'on_render: interactive applications and editors are not supported\n';
+            next.exitCode = 1;
+          }
+          response.renderCommands.push({ command: hook, result: next });
+        }
+      } catch (error) {
+        response.stderr += `on_render: ${error instanceof Error ? error.message : error}\n`;
+      }
+    }
+    return response;
+  }
   return {
     fs,
     getCwd: () => cwd,
-    async exec(command: string, options?: ExecOptions): Promise<ShellExecResult> {
-      reads.length = 0;
-      downloads.length = 0;
-      editorPath = undefined;
-      interactiveEditor = false;
-      rendered = undefined;
-      let markdown = false;
-      try {
-        const ast = engine.transform(command).ast;
-        const statements = ast.statements;
-        const pipeline = statements[0]?.pipelines[0];
-        const cmd = pipeline?.commands[0];
-        interactiveEditor =
-          statements.length === 1 &&
-          statements[0].pipelines.length === 1 &&
-          !statements[0].background &&
-          pipeline?.commands.length === 1 &&
-          !pipeline.timed &&
-          cmd?.type === 'SimpleCommand' &&
-          !cmd.redirections.length &&
-          ['vim', 'vi'].includes(
-            cmd.name?.parts.map((part: any) => part.value || '').join('') || '',
-          );
-        const last = pipeline?.commands.at(-1);
-        markdown =
-          statements.length === 1 &&
-          statements[0].pipelines.length === 1 &&
-          !statements[0].background &&
-          !pipeline?.timed &&
-          last?.type === 'SimpleCommand' &&
-          !last.redirections.some((r) => !['<', '<<<', '<<', '<<-'].includes(r.operator)) &&
-          last.name?.parts.length === 1 &&
-          last.name.parts[0].type === 'Literal' &&
-          last.name.parts[0].value === 'render';
-
-        const executable = await resolveExecutable(ast, fs, cwd);
-        if (executable.kind === 'error')
-          return {
-            stdout: '',
-            stderr: executable.stderr,
-            exitCode: executable.exitCode,
-            env,
-            documents: [],
-            downloads: [],
-            application: undefined,
-          };
-        if (executable.kind === 'application')
-          return {
-            stdout: '',
-            stderr: '',
-            exitCode: 0,
-            env,
-            documents: [],
-            downloads: [],
-            application: executable.application,
-          };
-      } catch {}
-      const result = await engine.exec(command, { ...options, cwd, env, replaceEnv: true });
-      env = result.env;
-      cwd = result.env.PWD || cwd;
-      const documents: { path: string; text: string }[] = [];
-      const document = rendered as { path: string; text: string } | undefined;
-      if (markdown && result.exitCode === 0 && document && result.stdout === document.text)
-        documents.push(document);
-      return {
-        ...result,
-        documents,
-        downloads: [...downloads],
-        editorPath: editorPath as string | undefined,
-        application: undefined,
-      };
-    },
+    exec: (command: string, options?: ExecOptions) =>
+      exec(command, options, { seen: new Set(), remaining: 8, deadline: Date.now() + 5000 }),
   };
 }

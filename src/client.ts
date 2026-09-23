@@ -142,20 +142,21 @@ function downloadFiles(block: HTMLElement, files: { name: string; bytes: Uint8Ar
   block.append(list);
   for (const link of list.querySelectorAll<HTMLAnchorElement>('a')) link.click();
 }
-function output(
-  block: HTMLElement,
-  result: {
-    documents?: { path: string; text: string }[];
-    stdout: string;
-    stderr: string;
-    cwd?: string;
-  },
-) {
+type OutputResult = {
+  documents?: { path: string; text: string }[];
+  stdout: string;
+  stderr: string;
+  cwd?: string;
+  renderCommands?: { command: string; result: OutputResult }[];
+};
+function output(block: HTMLElement, result: OutputResult) {
   const fallbackSource = (result.cwd || cwd).replace(/\/$/, '') + '/.terminal-output.md';
   if (result.documents?.length) {
     for (const doc of result.documents) formatted(block, doc.text, doc.path, true);
   } else formatted(block, result.stdout, fallbackSource);
   formatted(block, result.stderr, fallbackSource, false, true);
+  for (const hook of result.renderCommands || [])
+    output(commandBlock(hook.command, result.cwd || cwd), hook.result);
 }
 // Retain substantial scrollback without growing the DOM indefinitely.
 // Large outputs remain a single text node; content-visibility skips offscreen layout.

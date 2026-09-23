@@ -41,7 +41,10 @@ try {
   await page.locator('article[data-source="/home/web/blog/INDEX.md"]').waitFor();
   await idle();
   // content-visibility can skip offscreen layout; inspect the rendered DOM text.
-  const publishedIndex = (await page.locator('article').last().textContent())!;
+  const publishedIndex = (await page
+    .locator('article[data-source="/home/web/blog/INDEX.md"]')
+    .last()
+    .textContent())!;
   assert.match(publishedIndex, /Blog/);
   assert.ok(requests.includes('/_files/home/web/blog/'));
   assert.ok(requests.includes('/_files/home/web/blog/INDEX.md'));

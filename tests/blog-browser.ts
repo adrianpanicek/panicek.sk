@@ -50,22 +50,23 @@ try {
     await page.waitForFunction(
       () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
     );
-    assert.equal(await page.locator('article').count(), 1);
-    assert.equal(await page.locator('article[data-source="/home/web/ABOUT.md"]').count(), 0);
+    assert.equal(await page.locator('article').count(), 2);
+    assert.equal(await page.locator('article[data-source="/home/web/ABOUT.md"]').count(), 1);
+    assert.equal(await page.locator('article[data-source="/home/web/CONTACTS.md"]').count(), 0);
     assert.equal(await index.locator('h2').count(), 10);
-    assert.equal(await index.locator('h2').first().innerText(), 'Test post 11');
+    assert.equal(await index.locator('h2').first().textContent(), 'Test post 11');
     await index.getByRole('link', { name: 'Opening paragraph 11.', exact: true }).click();
     const post = page.locator('article[data-source$="post-11/INDEX.md"]').last();
     await post.waitFor();
     await idle();
-    assert.match(await post.innerText(), /Full post body 11/);
-    assert.doesNotMatch(await post.innerText(), /thumbnail:/);
+    assert.match((await post.textContent()) || '', /Full post body 11/);
+    assert.doesNotMatch((await post.textContent()) || '', /thumbnail:/);
     await index.getByRole('link', { name: 'Older posts' }).click();
     const older = page.locator('article[data-source="/home/web/blog/pages/2/INDEX.md"]');
     await older.waitFor();
     await idle();
     assert.equal(await older.locator('h2').count(), 1);
-    assert.match(await older.innerText(), /Test post 1/);
+    assert.match((await older.textContent()) || '', /Test post 1/);
     await older.getByRole('link', { name: 'Tags', exact: true }).click();
     const tags = page.locator('article[data-source="/home/web/blog/tags/INDEX.md"]');
     await tags.waitFor();
@@ -86,7 +87,7 @@ try {
         ?.endsWith('post-11/INDEX.md'),
     );
     await idle();
-    assert.match(await page.locator('article').last().innerText(), /Full post body 11/);
+    assert.match((await page.locator('article').last().textContent()) || '', /Full post body 11/);
     const raw = await context.request.get(new URL('/blog/post-11/INDEX.md', server.url).href);
     assert.equal(raw.status(), 200);
     assert.match(await raw.text(), /tags: \[Example\]/);
