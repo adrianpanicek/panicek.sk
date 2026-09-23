@@ -28,7 +28,8 @@ try {
   await input.press('Enter');
   await page.locator('article[data-source="/home/web/blog/INDEX.md"]').waitFor();
   await idle();
-  const publishedIndex = await page.locator('article').last().innerText();
+  // content-visibility can skip offscreen layout; inspect the rendered DOM text.
+  const publishedIndex = (await page.locator('article').last().textContent())!;
   assert.match(publishedIndex, /Blog/);
   assert.ok(requests.includes('/_files/home/web/blog/'));
   assert.ok(requests.includes('/_files/home/web/blog/INDEX.md'));
@@ -42,7 +43,7 @@ try {
       .querySelector('article[data-source="/home/web/blog/INDEX.md"]')
       ?.textContent?.includes('Local blog'),
   );
-  assert.match(await page.locator('article').last().innerText(), /Local blog/);
+  assert.match((await page.locator('article').last().textContent())!, /Local blog/);
   const fresh = await browser.newPage();
   await fresh.goto(base + '/home/web/blog/');
   await fresh.locator('article[data-source="/home/web/blog/INDEX.md"]').waitFor();
@@ -53,11 +54,11 @@ try {
     return (
       !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&
       document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
-      articles[articles.length - 1]?.innerText.includes('Blog')
+      articles[articles.length - 1]?.textContent?.includes('Blog')
     );
   });
   assert.equal(
-    await fresh.locator('article[data-source="/home/web/blog/INDEX.md"]').last().innerText(),
+    await fresh.locator('article[data-source="/home/web/blog/INDEX.md"]').last().textContent(),
     publishedIndex,
   );
   console.log('PASS directory URLs, nginx-style lazy loading, aliases and persisted edits');
