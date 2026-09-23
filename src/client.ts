@@ -97,7 +97,7 @@ function setStatus(message: string, warning = false) {
 }
 function availability() {
   input.disabled = !ready || editing || applications.state !== 'idle';
-  form.setAttribute('aria-busy', String(Boolean(busy || typing)));
+  form.setAttribute('aria-busy', String(Boolean(!ready || busy || typing)));
   stop.hidden =
     (applications.state !== 'idle' && !applications.interruptible) || (!busy && !typing);
   prompt.textContent = displayPath(cwd);

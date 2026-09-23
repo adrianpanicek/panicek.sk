@@ -41,11 +41,30 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  let releaseStartup!: () => void;
+  const startupGate = new Promise<void>((resolve) => {
+    releaseStartup = resolve;
+  });
+  await page.route('**/filesystem.json', async (route) => {
+    await startupGate;
+    await route.continue();
+  });
   await page.goto(base);
+  await page.locator('#command-form').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#command').isDisabled(), true);
+  assert.equal(
+    await page.locator('#command-form').getAttribute('aria-busy'),
+    'true',
+    'loading shell must not report idle',
+  );
+  releaseStartup();
   await page.waitForFunction(
-    () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
+    () =>
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
+      !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
   );
   const portrait = page.locator('.markdown img').first();
+  await portrait.scrollIntoViewIfNeeded();
   await portrait.evaluate((node) => (node as HTMLImageElement).decode());
   const imageBloom = page.locator('.crt-image-bloom').first();
   assert.ok(await imageBloom.count(), 'Firefox images need a colored bloom copy');
@@ -148,7 +167,9 @@ try {
   );
   await page.reload();
   await page.waitForFunction(
-    () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
+    () =>
+      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
+      !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
   );
   assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
   await toggle.evaluate((node) => (node as HTMLButtonElement).click());
