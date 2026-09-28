@@ -10,11 +10,20 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    outputs:
+      blog_only: ${{ steps.changes.outputs.blog_only }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+      - name: Detect blog-only changes
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: echo "blog_only=$(bun scripts/blog-only-change.ts "$BASE_SHA")" >> "$GITHUB_OUTPUT"
       - run: bun install --frozen-lockfile
       - run: bun run format:check
       - run: bun run check
@@ -28,6 +37,7 @@ jobs:
   test:
     name: Unit and browser tests
     needs: build
+    if: needs.build.outputs.blog_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -59,7 +69,12 @@ jobs:
           retention-days: 7
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: >-
+      always() && !cancelled() &&
+      github.event_name == 'push' && github.ref == 'refs/heads/master' &&
+      needs.build.result == 'success' &&
+      (needs.test.result == 'success' ||
+       (needs.build.outputs.blog_only == 'true' && needs.test.result == 'skipped'))
     needs: [build, test]
     runs-on: ubuntu-24.04
     permissions:
