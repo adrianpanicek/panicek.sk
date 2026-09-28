@@ -18,7 +18,7 @@ In my experience, many young students struggle with the concept of binary and co
 
 Let's imagine an egg cup. One bit can be represented by either having an egg in the cup (1) or leaving it empty (0). With one egg cup, we can represent exactly two states: 1 or 0.
 
-| ![Empty cup](egg-cup-empty.gif "width=20") | ![Cup with an egg](egg-cup-full.gif "width=20") |
+| ![Empty cup](egg-cup-empty.gif "width=3em") | ![Cup with an egg](egg-cup-full.gif "width=3em") |
 | :---: | :---: |
 | 0 | 1 |
 
@@ -50,7 +50,7 @@ We then add up the values of the cups that contain an egg.
 
 Let's double the number of egg cups to four. This is where the magic happens: the number of combinations grows from 4 to 16. Each time we add a new cup on the left, we give it twice the value of the cup to its right.
 
-| ![Empty cup](egg-cup-empty.gif "width=20") | ![Empty cup](egg-cup-empty.gif "width=20") | ![Empty cup](egg-cup-empty.gif "width=20") | ![Empty cup](egg-cup-empty.gif "width=20") |
+| ![Empty cup](egg-cup-empty.gif "width=3em") | ![Empty cup](egg-cup-empty.gif "width=3em") | ![Empty cup](egg-cup-empty.gif "width=3em") | ![Empty cup](egg-cup-empty.gif "width=3em") |
 | :---: | :---: | :---: | :---: |
 | 8 | 4 | 2 | 1 |
 
@@ -58,7 +58,7 @@ This lets us represent every whole number in our range without gaps or duplicate
 
 If we now fill all of the egg cups, we get:
 
-| ![Cup with an egg](egg-cup-full.gif "width=20") | ![Cup with an egg](egg-cup-full.gif "width=20") | ![Cup with an egg](egg-cup-full.gif "width=20") | ![Cup with an egg](egg-cup-full.gif "width=20") |
+| ![Cup with an egg](egg-cup-full.gif "width=3em") | ![Cup with an egg](egg-cup-full.gif "width=3em") | ![Cup with an egg](egg-cup-full.gif "width=3em") | ![Cup with an egg](egg-cup-full.gif "width=3em") |
 | :---: | :---: | :---: | :---: |
 | 8 | 4 | 2 | 1 |
 
