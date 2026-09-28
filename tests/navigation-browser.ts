@@ -46,8 +46,14 @@ try {
     if ((await toggle.getAttribute('aria-pressed')) !== String(crt)) await toggle.click();
     const url = page.url();
     const timeOrigin = await page.evaluate(() => performance.timeOrigin);
-    const post = page.locator('a[data-file$="test-article/INDEX.md"]').first();
-    assert.equal(await post.getAttribute('href'), base + '/blog/test-article/');
+    const post = page.locator('article h2 a[data-file$="/INDEX.md"]').first();
+    const source = await post.getAttribute('data-file');
+    assert.ok(
+      source && source.startsWith('/home/web/blog/'),
+      'blog index should link to a published article',
+    );
+    const postPath = source.slice('/home/web'.length, -'INDEX.md'.length);
+    assert.equal(await post.getAttribute('href'), base + postPath);
     await post.click();
     const settledPositions = await page.evaluate(async () => {
       await new Promise((resolve) => setTimeout(resolve, 650));
@@ -64,7 +70,7 @@ try {
       `scroll must remain settled while command finishes (crt=${crt}, width=${width}): ${Math.min(...settledPositions)}..${Math.max(...settledPositions)}`,
     );
     await idle();
-    assert.equal(page.url(), base + '/blog/test-article/');
+    assert.equal(page.url(), base + postPath);
     assert.equal(await page.locator('#cwd').textContent(), '~/blog');
     assert.equal(await page.evaluate(() => performance.timeOrigin), timeOrigin);
     assert.equal(await page.locator('#transcript article').count(), 2);
@@ -104,7 +110,7 @@ try {
     await page.goBack();
     assert.equal(page.url(), url);
     await page.goForward();
-    assert.equal(page.url(), base + '/blog/test-article/');
+    assert.equal(page.url(), base + postPath);
     assert.equal(await page.evaluate(() => performance.timeOrigin), timeOrigin);
     assert.equal(await page.locator('#transcript article').count(), 2);
     await page.waitForTimeout(500);
@@ -169,13 +175,20 @@ try {
   );
   assert.equal(await animationToggle.getAttribute('aria-pressed'), 'false');
   assert.equal(await settings.locator('html').getAttribute('data-animations'), 'off');
+  const post = settings.locator('article h2 a[data-file$="/INDEX.md"]').first();
+  const source = await post.getAttribute('data-file');
+  assert.ok(
+    source && source.startsWith('/home/web/blog/'),
+    'blog index should link to a published article',
+  );
+  const postPath = source.slice('/home/web'.length, -'INDEX.md'.length);
   const started = Date.now();
-  await settings.locator('a[data-file$="test-article/INDEX.md"]').first().click();
+  await post.click();
   await settings.waitForFunction(
     () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
   );
   assert.ok(Date.now() - started < 1200, 'disabled animations skip the typing delay');
-  assert.equal(new URL(settings.url()).pathname, '/blog/test-article/');
+  assert.equal(new URL(settings.url()).pathname, postPath);
   const shellInput = settings.getByRole('textbox', { name: 'Shell command' });
   await shellInput.fill('pwd');
   await shellInput.press('Enter');
@@ -190,7 +203,7 @@ try {
   assert.equal(await animationToggle.getAttribute('aria-pressed'), 'true');
   await settings.close();
   const context = await browser.newContext({ javaScriptEnabled: false });
-  for (const path of ['/blog/', '/blog/test-article/', '/home/web/blog/test-article/']) {
+  for (const path of ['/blog/', postPath, '/home/web' + postPath]) {
     const page = await context.newPage();
     await page.goto(base + path);
     assert.equal(await page.locator('article').count(), 1);
