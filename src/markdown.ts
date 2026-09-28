@@ -1,3 +1,4 @@
+import { renderEggCups } from './egg-cups';
 import { Marked, Renderer } from 'marked';
 import { resolveLink } from './paths';
 import { splitFrontmatter } from './frontmatter';
@@ -52,6 +53,11 @@ export function renderMarkdown(
     return `<p class="scrollback-note">Large output shown as plain text to keep the terminal responsive.</p><pre class="output">${escapeHtml(text)}</pre>`;
   text = splitFrontmatter(text).body;
   const renderer = new Renderer();
+  renderer.code = function (token) {
+    const bits = token.text.trim();
+    if (token.lang === 'egg-cups' && /^[01]{1,8}$/.test(bits)) return renderEggCups(bits);
+    return Renderer.prototype.code.call(this, token);
+  };
   renderer.html = ({ text }) => escapeHtml(text);
   renderer.image = ({ href, text, title }) => {
     const video = youtubeId(href);

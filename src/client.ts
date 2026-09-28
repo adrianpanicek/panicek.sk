@@ -1,3 +1,4 @@
+import { setupEggCups } from './egg-cups';
 import { setupCrt } from './crt';
 import { setupCrtImages } from './crt-image';
 import { countVisitor } from './visitors';
@@ -13,6 +14,7 @@ import type { BaseFiles } from './filesystem';
 import { createApplicationController } from './applications';
 
 setupAnimations();
+setupEggCups(document);
 setupCrt();
 setupCrtImages(document);
 void countVisitor();
