@@ -1,3 +1,4 @@
+import { markdownStyle } from './render-options';
 import { renderEggCups } from './egg-cups';
 import { Marked, Renderer } from 'marked';
 import { resolveLink } from './paths';
@@ -69,18 +70,26 @@ export function renderMarkdown(
     const src = local?.href ?? (/^https?:\/\//i.test(href) ? href : null);
     if (!src) return escapeHtml(text);
     const layout = title?.match(
-      /^(?:width=([1-9][0-9]{0,3}))(?: height=([1-9][0-9]{0,3}))?(?: align=(left|right|center))?$/,
+      /^width=([0-9]{1,4}(?:\.[0-9]{1,4})?|\.[0-9]{1,4})(px|em)?(?: height=([0-9]{1,4}(?:\.[0-9]{1,4})?|\.[0-9]{1,4})(px|em)?)?(?: align=(left|right|center))?$/,
     );
-    const width = layout ? Math.min(Number(layout[1]), 4096) : null;
-    const alignment = layout?.[3];
-    const size = layout?.[2]
-      ? { width: width!, height: Math.min(Number(layout[2]), 4096) }
-      : local
-        ? imageDimensions[local.path]
-        : undefined;
+    const valid = layout && Number(layout[1]) > 0 && (!layout[3] || Number(layout[3]) > 0);
+    const widthUnit = layout?.[2] || 'px';
+    const heightUnit = layout?.[4] || 'px';
+    const width = valid ? Math.min(Number(layout[1]), widthUnit === 'em' ? 256 : 4096) : null;
+    const height =
+      valid && layout[3] ? Math.min(Number(layout[3]), heightUnit === 'em' ? 256 : 4096) : null;
+    const alignment = valid ? layout[5] : undefined;
+    // HTML dimensions are pixel counts. Relative CSS sizes retain the image's
+    // intrinsic pixel dimensions for aspect-ratio reservation.
+    const size =
+      width && height && widthUnit === 'px' && heightUnit === 'px'
+        ? { width, height }
+        : local
+          ? imageDimensions[local.path]
+          : undefined;
     const dimensions = size ? ` width="${size.width}" height="${size.height}"` : '';
     const attributes = width
-      ? ` style="width:${width}px"${alignment ? ` class="image-${alignment}"` : ''}`
+      ? ` style="width:${width}${widthUnit}${height ? `;height:${height}${heightUnit}` : ''}"${alignment ? ` class="image-${alignment}"` : ''}`
       : title
         ? ` title="${escapeHtml(title)}"`
         : '';
@@ -101,4 +110,16 @@ export function renderMarkdown(
     return `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${label}</a>`;
   };
   return new Marked({ renderer, gfm: true, breaks: false }).parse(text, { async: false });
+}
+
+// Keep prerendered pages and interactive rendering on the same article element.
+export function renderArticle(
+  text: string,
+  source: string,
+  origin = 'https://panicek.sk',
+  imageDimensions?: ImageDimensions,
+  style?: string,
+): string {
+  const css = markdownStyle(text, style);
+  return `<article class="markdown" data-source="${escapeHtml(source)}"${css ? ` style="${escapeHtml(css)}"` : ''}>${renderMarkdown(text, source, origin, imageDimensions)}</article>`;
 }

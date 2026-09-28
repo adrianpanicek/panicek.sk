@@ -1,4 +1,5 @@
 ---
+style: "line-height: 1.2"
 title: Computers are just egg cups
 date: 2026-09-23
 tags:

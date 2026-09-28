@@ -1,3 +1,4 @@
+import { markdownStyle } from './render-options';
 import { setupEggCups } from './egg-cups';
 import { setupCrt } from './crt';
 import { setupCrtImages } from './crt-image';
@@ -128,7 +129,14 @@ function plain(block: HTMLElement, text: string, error = false) {
   pre.textContent = text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(0, 1048576);
   block.append(pre);
 }
-function formatted(block: HTMLElement, text: string, source: string, force = false, error = false) {
+function formatted(
+  block: HTMLElement,
+  text: string,
+  source: string,
+  force = false,
+  error = false,
+  style?: string,
+) {
   const clean = decodeContactTokens(text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(0, 1048576));
   if (!clean) return;
   if (force) {
@@ -136,6 +144,8 @@ function formatted(block: HTMLElement, text: string, source: string, force = fal
     article.className = error ? 'markdown error' : 'markdown';
     article.dataset.source = source;
     article.innerHTML = renderMarkdown(clean, source, location.origin);
+    const css = markdownStyle(clean, style);
+    if (css) article.style.cssText = css;
     setupCrtImages(article);
     block.append(article);
   } else plain(block, clean, error);
@@ -162,7 +172,7 @@ function downloadFiles(block: HTMLElement, files: { name: string; bytes: Uint8Ar
   for (const link of list.querySelectorAll<HTMLAnchorElement>('a')) link.click();
 }
 type OutputResult = {
-  documents?: { path: string; text: string }[];
+  documents?: { path: string; text: string; style?: string }[];
   stdout: string;
   stderr: string;
   cwd?: string;
@@ -171,7 +181,8 @@ type OutputResult = {
 function output(block: HTMLElement, result: OutputResult) {
   const fallbackSource = (result.cwd || cwd).replace(/\/$/, '') + '/.terminal-output.md';
   if (result.documents?.length) {
-    for (const doc of result.documents) formatted(block, doc.text, doc.path, true);
+    for (const doc of result.documents)
+      formatted(block, doc.text, doc.path, true, false, doc.style);
   } else formatted(block, result.stdout, fallbackSource);
   formatted(block, result.stderr, fallbackSource, false, true);
   for (const hook of result.renderCommands || [])

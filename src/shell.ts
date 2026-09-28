@@ -5,14 +5,14 @@ import { HOME } from './paths';
 import { renderHook } from './render-hook';
 
 type ShellExecResult = BashExecResult & {
-  documents: { path: string; text: string }[];
+  documents: { path: string; text: string; style?: string }[];
   downloads: Download[];
   renderCommands: { command: string; result: ShellExecResult }[];
   editorPath?: string;
   application?: ApplicationRequest;
 };
 
-export const HELP = `Explore the portfolio\n\n  cat ~/ABOUT.md | render   About me\n  cat ~/CAREER.md | render  Career history\n  cat ~/CONTACTS.md | render  Get in touch\n  cat ~/portrait.txt  ASCII portrait\n  save <files...>    Download files (/usr/sbin/save)\n  vim <file>, vi      Edit a file (:w, :q, :wq)\n  ls, cd, pwd, find    Explore files\n  grep, sort, sed      Work with text and pipes\n  ./programs/hello    Run a browser executable\n  ./programs/counter.js  Open an interactive program\n  help                Show this help\n  clear               Clear the transcript\n  reset               Restore the published files\n\nTab completes paths. Shift+Enter adds a line; Enter runs it. Paste never auto-runs.\nUp/down browse history. Ctrl+C interrupts.\nEdits stay in this browser. Output is plain text. Pipe into render for Markdown and images. Markdown links run cat | render.\nOpen /~/CAREER.md in your address bar to read a raw file.\n`;
+export const HELP = `Explore the portfolio\n\n  cat ~/ABOUT.md | render   About me\n  cat ~/CAREER.md | render  Career history\n  cat ~/CONTACTS.md | render  Get in touch\n  render -s "line-height: 1.2" file.md  Style a Markdown article\n  cat ~/portrait.txt  ASCII portrait\n  save <files...>    Download files (/usr/sbin/save)\n  vim <file>, vi      Edit a file (:w, :q, :wq)\n  ls, cd, pwd, find    Explore files\n  grep, sort, sed      Work with text and pipes\n  ./programs/hello    Run a browser executable\n  ./programs/counter.js  Open an interactive program\n  help                Show this help\n  clear               Clear the transcript\n  reset               Restore the published files\n\nTab completes paths. Shift+Enter adds a line; Enter runs it. Paste never auto-runs.\nUp/down browse history. Ctrl+C interrupts.\nEdits stay in this browser. Output is plain text. Pipe into render for Markdown and images. Markdown links run cat | render.\nOpen /~/CAREER.md in your address bar to read a raw file.\n`;
 export function createShell(fs: IFileSystem) {
   let cwd = HOME;
   let env: Record<string, string> = {
@@ -25,7 +25,7 @@ export function createShell(fs: IFileSystem) {
   };
   const reads: string[] = [];
   const downloads: Download[] = [];
-  let rendered: { path: string; text: string } | undefined;
+  let rendered: { path: string; text: string; style?: string } | undefined;
   let editorPath: string | undefined;
   let interactiveEditor = false;
   const openEditor = async (args: string[]) => {
@@ -81,20 +81,36 @@ export function createShell(fs: IFileSystem) {
       {
         name: 'render',
         execute: async (args, ctx) => {
-          if (args.length > 1)
+          const files: string[] = [];
+          let style: string | undefined;
+          let invalid = false;
+          for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (arg === '--') {
+              files.push(...args.slice(i + 1));
+              break;
+            }
+            if (arg === '--style' || arg === '-s' || arg.startsWith('--style=')) {
+              style = arg.startsWith('--style=') ? arg.slice(8) : args[++i];
+              if (style === undefined) invalid = true;
+            } else if (arg.startsWith('-')) invalid = true;
+            else files.push(arg);
+          }
+          if (invalid || files.length > 1)
             return {
               stdout: '',
-              stderr: 'Usage: cat file.md | render, or render file.md\n',
+              stderr:
+                'Usage: render [--style/-s "property: value; ..."] [file.md] (or pipe Markdown into render)\n',
               exitCode: 1,
             };
           try {
             const paths = [...new Set(reads)];
-            let path = args.length
-              ? ctx.fs.resolvePath(ctx.cwd, args[0])
+            let path = files.length
+              ? ctx.fs.resolvePath(ctx.cwd, files[0])
               : paths.length === 1
                 ? ctx.fs.resolvePath(ctx.cwd, paths[0])
                 : ctx.cwd + '/.terminal-output.md';
-            if (args.length && (await ctx.fs.stat(path)).isDirectory) {
+            if (files.length && (await ctx.fs.stat(path)).isDirectory) {
               const directory = await ctx.fs.realpath(path);
               if (!(await ctx.fs.exists(directory + '/INDEX.md'))) {
                 return {
@@ -105,12 +121,12 @@ export function createShell(fs: IFileSystem) {
               }
               path = directory + '/INDEX.md';
             }
-            const text = args.length
+            const text = files.length
               ? await ctx.fs.readFile(path)
               : new TextDecoder().decode(
                   Uint8Array.from(String(ctx.stdin), (character) => character.charCodeAt(0)),
                 );
-            rendered = { path, text };
+            rendered = { path, text, ...(style === undefined ? {} : { style }) };
             return { stdout: text, stderr: '', exitCode: 0 };
           } catch (error) {
             return { stdout: '', stderr: `render: ${String(error)}\n`, exitCode: 1 };
@@ -191,8 +207,8 @@ export function createShell(fs: IFileSystem) {
     const result = await engine.exec(command, { ...options, cwd, env, replaceEnv: true });
     env = result.env;
     cwd = result.env.PWD || cwd;
-    const documents: { path: string; text: string }[] = [];
-    const document = rendered as { path: string; text: string } | undefined;
+    const documents: { path: string; text: string; style?: string }[] = [];
+    const document = rendered as { path: string; text: string; style?: string } | undefined;
     if (markdown && result.exitCode === 0 && document && result.stdout === document.text)
       documents.push(document);
     const response: ShellExecResult = {

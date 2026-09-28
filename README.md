@@ -377,6 +377,23 @@ build reads dimensions from PNG, JPEG, GIF, WebP, AVIF, and SVG files. For remot
 images, provide dimensions in the title, such as `"width=800 height=450"`.
 The optional `align=left`, `align=right`, or `align=center` follows the dimensions.
 
+Widths and heights accept pixels (bare numbers or `px`) and font-relative `em`
+units, including decimals: `![Cup](egg-cup-empty.gif "width=3em")`.
+
+Markdown YAML frontmatter can apply CSS declarations to the whole article:
+
+```yaml
+style: 'line-height: 1.2; padding: 1em; background: #111'
+```
+
+The same inline style applies to prerendered pages and terminal rendering.
+Append or override declarations for one render with
+`render --style "line-height: 1.5; max-width: 60ch" file.md` or
+`cat file.md | render -s "line-height: 1.5"`. `--style="..."` also works.
+Quote the semicolon-separated CSS string so the shell treats it as one argument.
+Styles apply to the article element; inherited properties follow the normal CSS
+cascade. Invalid CSS declarations are ignored by the browser.
+
 ## Compressed assets
 
 The build writes maximum-compression gzip and Brotli variants of text assets.

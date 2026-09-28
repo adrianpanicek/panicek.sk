@@ -7,7 +7,7 @@ import { minify } from 'html-minifier-terser';
 import { SYSTEM_FILES } from '../src/downloads';
 import { mkdir, rm, cp, readdir, symlink, mkdtemp } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { renderMarkdown, escapeHtml } from '../src/markdown';
+import { renderArticle, escapeHtml } from '../src/markdown';
 import { encode } from '../src/bytes';
 import { createFilesystem, snapshot, type BaseFiles } from '../src/filesystem';
 import { validRemoteName } from '../src/remote-filesystem';
@@ -216,7 +216,7 @@ const socialImageAlt =
 const transcript = ['ABOUT.md']
   .map(
     (name) =>
-      `<section class="entry"><div class="prompt-line"><span class="user">web</span>@<span class="host">panicek.sk</span> <span class="cwd">~</span> $ <span class="command-name">cat</span> <span class="argument">${name}</span> | <span class="command-name">render</span></div><article class="markdown" data-source="${HOME}/${name}">${renderMarkdown(textFile(`${HOME}/${name}`), `${HOME}/${name}`, ORIGIN, imageDimensions)}</article></section>`,
+      `<section class="entry"><div class="prompt-line"><span class="user">web</span>@<span class="host">panicek.sk</span> <span class="cwd">~</span> $ <span class="command-name">cat</span> <span class="argument">${name}</span> | <span class="command-name">render</span></div>${renderArticle(textFile(`${HOME}/${name}`), `${HOME}/${name}`, ORIGIN, imageDimensions)}</section>`,
   )
   .join('\n');
 const person = {
@@ -293,7 +293,7 @@ for (const path of [
   const source = canonical + '/INDEX.md';
   const body =
     typeof files[source] === 'string'
-      ? `<section class="entry"><article class="markdown" data-source="${escapeHtml(source)}">${renderMarkdown(textFile(source), source, ORIGIN, imageDimensions)}</article></section>`
+      ? `<section class="entry">${renderArticle(textFile(source), source, ORIGIN, imageDimensions)}</section>`
       : '';
   const pageUrl =
     ORIGIN +

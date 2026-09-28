@@ -1,4 +1,5 @@
 ---
+style: "line-height: 1.2"
 title: Where does the minus go?
 date: 2026-09-28
 tags:
