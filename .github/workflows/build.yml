@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -90,7 +94,14 @@ jobs:
           name: portfolio
           path: dist/
       - run: bun run package
-      - run: gh release create "$RELEASE_TAG" .artifacts/portfolio.zip --target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes "Static portfolio build from master at $GITHUB_SHA" --prerelease
+      - name: Publish current master build
+        run: |
+          current_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq '.object.sha')
+          if [ "$current_sha" != "$GITHUB_SHA" ]; then
+            echo "A newer master commit exists; skipping this superseded release."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" .artifacts/portfolio.zip --target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes "Static portfolio build from master at $GITHUB_SHA" --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: master-${{ github.run_id }}-${{ github.run_attempt }}
