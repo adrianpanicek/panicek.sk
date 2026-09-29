@@ -5,6 +5,10 @@
 {{#each posts}}
 ## [{{md title}}]({{url}})
 
+{{#if categories}}
+{{#each categories}}[{{md name}}]({{url}} "blog-category"){{#unless @last}} > {{/unless}}{{/each}}
+
+{{/if}}
 {{date}}{{#if tags}} · {{#each tags}}[{{md name}}]({{url}}){{#unless @last}}, {{/unless}}{{/each}}{{/if}}
 
 {{#if thumbnailUrl}}

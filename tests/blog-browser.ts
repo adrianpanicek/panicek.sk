@@ -15,7 +15,7 @@ await symlink('./home/web/blog', join(root, 'blog'));
 const blog = join(root, 'home/web/blog');
 await rm(blog, { recursive: true, force: true });
 for (let n = 1; n <= 11; n++) {
-  const id = `post-${n}`;
+  const id = n === 11 ? 'tutorials/cows/post-11' : `post-${n}`;
   await Bun.write(
     join(blog, id, 'INDEX.md'),
     `---\ntitle: Test post ${n}\ndate: 2026-09-${String(n).padStart(2, '0')}\ntags: [Example]\n${n === 11 ? 'on_render: "cat ~/ABOUT.md | render"\n' : ''}thumbnail: cover.svg\n---\n\n# Test post ${n}\n\nOpening paragraph ${n}.\n\nFull post body ${n}.\n`,
@@ -55,16 +55,39 @@ try {
     assert.equal(await page.locator('article[data-source="/home/web/CONTACTS.md"]').count(), 0);
     assert.equal(await index.locator('h2').count(), 10);
     assert.equal(await index.locator('h2').first().textContent(), 'Test post 11');
+    assert.equal(await index.locator('.blog-breadcrumb').textContent(), 'tutorials > cows');
     await index.getByRole('link', { name: 'Opening paragraph 11.', exact: true }).click();
     const post = page.locator('article[data-source$="post-11/INDEX.md"]').last();
     await post.waitFor();
     await idle();
     assert.match((await post.textContent()) || '', /Full post body 11/);
     assert.doesNotMatch((await post.textContent()) || '', /thumbnail:/);
+    const breadcrumb = post.getByRole('navigation', { name: 'Article category' });
+    assert.equal(await breadcrumb.textContent(), 'tutorials > cows');
+    assert.equal(await post.locator('h1 + nav').count(), 1);
+    assert.equal(
+      await breadcrumb
+        .getByRole('link', { name: 'cows' })
+        .evaluate((link) => getComputedStyle(link).color),
+      'rgb(136, 147, 165)',
+    );
     assert.equal(
       await page.locator('article').last().getAttribute('data-source'),
       '/home/web/ABOUT.md',
     );
+    await breadcrumb.getByRole('link', { name: 'cows' }).click();
+    const category = page
+      .locator('article[data-source="/home/web/blog/tutorials/cows/INDEX.md"]')
+      .last();
+    await category.waitFor();
+    await idle();
+    assert.equal(await category.locator('h2').count(), 1);
+    assert.equal(await category.locator('h1').textContent(), 'cows');
+    await category.getByRole('link', { name: 'tutorials', exact: true }).click();
+    const parent = page.locator('article[data-source="/home/web/blog/tutorials/INDEX.md"]').last();
+    await parent.waitFor();
+    await idle();
+    assert.equal(await parent.locator('h2').count(), 1);
     await index.getByRole('link', { name: 'Older posts' }).click();
     const older = page.locator('article[data-source="/home/web/blog/pages/2/INDEX.md"]');
     await older.waitFor();
@@ -95,13 +118,15 @@ try {
       await page.locator('article').last().getAttribute('data-source'),
       '/home/web/ABOUT.md',
     );
-    const raw = await context.request.get(new URL('/blog/post-11/INDEX.md', server.url).href);
+    const raw = await context.request.get(
+      new URL('/blog/tutorials/cows/post-11/INDEX.md', server.url).href,
+    );
     assert.equal(raw.status(), 200);
     assert.match(await raw.text(), /tags: \[Example\]/);
     await context.close();
   }
   console.log(
-    'PASS both blog routes, pagination, tags, clickable paragraphs/thumbnails and raw posts',
+    'PASS both blog routes, nested categories, muted breadcrumbs, pagination, tags, clickable previews and raw posts',
   );
 } finally {
   await browser.close();

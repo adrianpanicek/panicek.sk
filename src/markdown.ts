@@ -1,8 +1,10 @@
 import { markdownStyle } from './render-options';
 import { renderEggCups } from './egg-cups';
 import { Marked, Renderer } from 'marked';
-import { resolveLink } from './paths';
+import { parse as parseYaml } from 'yaml';
+import { hrefFor, resolveLink } from './paths';
 import { splitFrontmatter } from './frontmatter';
+import { CATEGORY_METADATA, postCategories } from './blog';
 
 export type ImageDimensions = Record<string, { width: number; height: number }>;
 declare const IMAGE_DIMENSIONS: ImageDimensions;
@@ -52,8 +54,50 @@ export function renderMarkdown(
 ): string {
   if (!withinMarkdownBudget(text))
     return `<p class="scrollback-note">Large output shown as plain text to keep the terminal responsive.</p><pre class="output">${escapeHtml(text)}</pre>`;
-  text = splitFrontmatter(text).body;
+  const { metadata, body } = splitFrontmatter(text);
+  let documentMetadata: Record<string, unknown> | undefined;
+  if (metadata && metadata.length <= 16384) {
+    try {
+      documentMetadata = parseYaml(metadata, { maxAliasCount: 10 });
+    } catch {}
+  }
+  text = body;
   const renderer = new Renderer();
+  const breadcrumb = (links: string) =>
+    `<nav class="blog-breadcrumb" aria-label="Article category">${links}</nav>\n`;
+  // Article paths include the slug; its parents are the categories. Generated
+  // category indexes have metadata too, but must never be treated as articles.
+  const article =
+    metadata !== null && metadata !== CATEGORY_METADATA
+      ? source.match(/^(\/(?:home\/web\/)?blog)\/(.+)\/INDEX\.md$/)
+      : null;
+  const categories = article ? postCategories(article[2]) : [];
+  const categoryLinks = categories.map(({ name, directory }) => {
+    const href = `${origin}/blog/${hrefFor(directory)}/`;
+    const file = `${article![1]}/${directory}/INDEX.md`;
+    return `<a href="${escapeHtml(href)}" data-file="${escapeHtml(file)}">${escapeHtml(name)}</a>`;
+  });
+  const articleBreadcrumb = categoryLinks.length ? breadcrumb(categoryLinks.join(' &gt; ')) : '';
+  let titleSeen = false;
+  renderer.heading = function (token) {
+    const heading = Renderer.prototype.heading.call(this, token);
+    if (token.depth !== 1 || titleSeen) return heading;
+    titleSeen = true;
+    return heading + articleBreadcrumb;
+  };
+  renderer.paragraph = function (token) {
+    // The listing template uses ordinary Markdown links with a reserved title.
+    const categoryLinks =
+      token.tokens.some((part) => part.type === 'link' && part.title === 'blog-category') &&
+      token.tokens.every(
+        (part) =>
+          (part.type === 'link' && part.title === 'blog-category') ||
+          (part.type === 'text' && /^\s*>\s*$/.test(part.text)),
+      );
+    return categoryLinks
+      ? breadcrumb(this.parser.parseInline(token.tokens))
+      : Renderer.prototype.paragraph.call(this, token);
+  };
   renderer.code = function (token) {
     const bits = token.text.trim();
     if (token.lang === 'egg-cups' && /^[01]{1,8}$/.test(bits)) return renderEggCups(bits);
@@ -109,7 +153,18 @@ export function renderMarkdown(
     if (!/^(https?:|mailto:|tel:)/i.test(href)) return label;
     return `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${label}</a>`;
   };
-  return new Marked({ renderer, gfm: true, breaks: false }).parse(text, { async: false });
+  const html = new Marked({ renderer, gfm: true, breaks: false }).parse(text, { async: false });
+  if (articleBreadcrumb && !titleSeen) {
+    // The post format allows the title to exist only in frontmatter. Local edits
+    // can contain invalid YAML, so a bad title must not prevent rendering the body.
+    const title = documentMetadata?.title;
+    return (
+      (typeof title === 'string' ? `<h1>${escapeHtml(title)}</h1>\n` : '') +
+      articleBreadcrumb +
+      html
+    );
+  }
+  return html;
 }
 
 // Keep prerendered pages and interactive rendering on the same article element.

@@ -568,6 +568,20 @@ footer button:hover {
   color: var(--bright);
   text-decoration-color: var(--bright);
 }
+.markdown .blog-breadcrumb {
+  margin: -0.35em 0 0.75em;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+.markdown .blog-breadcrumb a {
+  color: var(--muted);
+  text-decoration-color: transparent;
+}
+.markdown .blog-breadcrumb a:hover,
+.markdown .blog-breadcrumb a:focus-visible {
+  color: var(--bright);
+  text-decoration-color: currentColor;
+}
 .markdown h1 {
   color: #d5dae1;
 }

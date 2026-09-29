@@ -162,3 +162,122 @@ test('template errors fail before replacing existing indexes', async () => {
   expect(await Bun.file(join(root, 'INDEX.md')).text()).toBe(previous);
   expect(await Bun.file(join(root, 'tags/INDEX.md')).exists()).toBe(true);
 });
+
+test('nested categories include descendants but exclude siblings and root posts', async () => {
+  const root = await fixture();
+  await post(root, 1);
+  await post(join(root, 'tutorials'), 2);
+  await post(join(root, 'tutorials', 'cows'), 3, 'thumbnail: cover.svg\n');
+  await Bun.write(join(root, 'tutorials/cows/post-3/cover.svg'), '<svg/>');
+  await post(join(root, 'tutorials-extra'), 4);
+  const article = join(root, 'tutorials/cows/post-3/INDEX.md');
+  const original = await Bun.file(article).text();
+  await buildBlog(root);
+  const index = await Bun.file(join(root, 'INDEX.md')).text();
+  expect(index.match(/^## /gm)).toHaveLength(4);
+  expect(index).toContain('(tutorials/cows/post-3/INDEX.md)');
+  const category = await Bun.file(join(root, 'tutorials/INDEX.md')).text();
+  expect(category.match(/^## /gm)).toHaveLength(2);
+  expect(category).toContain('(cows/post-3/INDEX.md)');
+  expect(category).not.toContain('Post 1');
+  expect(category).not.toContain('Post 4');
+  const child = await Bun.file(join(root, 'tutorials/cows/INDEX.md')).text();
+  expect(child.match(/^## /gm)).toHaveLength(1);
+  expect(child).toContain('(post-3/cover.svg');
+  expect(child).toContain('[Blog](../../INDEX.md)');
+  expect(child).toContain('[Tags](../../tags/INDEX.md)');
+  expect(await Bun.file(article).text()).toBe(original);
+  await buildBlog(root);
+  expect(await Bun.file(join(root, 'tutorials/INDEX.md')).text()).toBe(category);
+});
+
+test('category pagination and tag pages keep nested links and remove stale pages', async () => {
+  const root = await fixture();
+  for (let n = 1; n <= 11; n++) await post(join(root, 'tutorials/cows'), n);
+  await buildBlog(root);
+  const older = await Bun.file(join(root, 'tutorials/pages/2/INDEX.md')).text();
+  expect(older).toContain('(../../cows/post-1/INDEX.md)');
+  expect(older).toContain('[Newer posts](../../INDEX.md)');
+  const tags = await Bun.file(join(root, 'tags/INDEX.md')).text();
+  const rust = tags.match(/\[Rust\]\(([^)]+)\)/)![1];
+  expect(await Bun.file(join(root, 'tags', rust)).text()).toContain(
+    '(../../tutorials/cows/post-11/INDEX.md)',
+  );
+  await rm(join(root, 'tutorials/cows/post-11'), { recursive: true });
+  await buildBlog(root);
+  expect(await Bun.file(join(root, 'tutorials/pages/2/INDEX.md')).exists()).toBe(false);
+  expect(await Bun.file(join(root, 'tutorials/cows/pages/2/INDEX.md')).exists()).toBe(false);
+  for (let n = 1; n <= 10; n++)
+    await rm(join(root, `tutorials/cows/post-${n}`), { recursive: true });
+  await buildBlog(root);
+  expect(await Bun.file(join(root, 'tutorials/INDEX.md')).text()).toContain('No posts yet.');
+});
+
+test('nested article breadcrumbs link every category below the title and escape names', async () => {
+  const raw = '---\ntitle: Article\ndate: 2026-09-01\ntags: []\n---\n\n# Article\n\nBody.\n';
+  for (const prefix of ['/home/web/blog', '/blog']) {
+    const html = renderMarkdown(raw, `${prefix}/Tips & tricks/cows/<calves>/article/INDEX.md`);
+    expect(html).toContain('<h1>Article</h1>\n<nav class="blog-breadcrumb"');
+    expect(html).toContain('href="https://panicek.sk/blog/Tips%20%26%20tricks/"');
+    expect(html).toContain(`data-file="${prefix}/Tips &amp; tricks/cows/INDEX.md"`);
+    expect(html).toContain('>Tips &amp; tricks</a>');
+    expect(html).toContain('>&lt;calves&gt;</a>');
+    expect(html.match(/ &gt; /g)).toHaveLength(2);
+    expect(html).not.toContain('>article</a>');
+  }
+  expect(renderMarkdown(raw, '/home/web/blog/article/INDEX.md')).not.toContain('blog-breadcrumb');
+  expect(renderMarkdown(raw, '/home/web/docs/category/article/INDEX.md')).not.toContain(
+    'blog-breadcrumb',
+  );
+});
+
+test('listing previews show category breadcrumbs without classifying indexes as articles', async () => {
+  const root = await fixture();
+  await post(join(root, 'Tips & tricks/cows'), 1);
+  await post(root, 2);
+  await buildBlog(root);
+  const html = renderMarkdown(
+    await Bun.file(join(root, 'INDEX.md')).text(),
+    '/home/web/blog/INDEX.md',
+  );
+  expect(html.match(/class="blog-breadcrumb"/g)).toHaveLength(1);
+  expect(html).toContain('href="https://panicek.sk/blog/Tips%20%26%20tricks/cows/"');
+  const category = renderMarkdown(
+    await Bun.file(join(root, 'Tips & tricks/cows/INDEX.md')).text(),
+    '/home/web/blog/Tips & tricks/cows/INDEX.md',
+  );
+  expect(category).not.toMatch(/<h1>.*<\/h1>\n<nav/);
+  expect(category).toContain('data-file="/home/web/blog/Tips &amp; tricks/INDEX.md"');
+});
+
+test('a malformed nested article fails without overwriting authored content', async () => {
+  const root = await fixture();
+  const path = join(root, 'tutorials/broken/INDEX.md');
+  await Bun.write(path, '# Missing frontmatter\n');
+  await expect(buildBlog(root)).rejects.toThrow('Missing YAML frontmatter');
+  expect(await Bun.file(path).text()).toBe('# Missing frontmatter\n');
+});
+
+test('categorized articles without a body heading use their metadata title above breadcrumbs', async () => {
+  const root = await fixture();
+  const raw =
+    '---\ntitle: "A <cow> & calf"\ndate: 2026-09-01\ntags: []\n---\n\nOpening paragraph.\n';
+  await Bun.write(join(root, 'tutorials/article/INDEX.md'), raw);
+  await buildBlog(root);
+  const html = renderMarkdown(raw, '/home/web/blog/tutorials/article/INDEX.md');
+  expect(html).toContain('<h1>A &lt;cow&gt; &amp; calf</h1>\n<nav class="blog-breadcrumb"');
+  expect(html).toContain('>tutorials</a>');
+  expect(html).toContain('<p>Opening paragraph.</p>');
+});
+
+test('category punctuation is literal in preview breadcrumbs', async () => {
+  const root = await fixture();
+  await post(join(root, '~~draft~~'), 1);
+  await buildBlog(root);
+  const html = renderMarkdown(
+    await Bun.file(join(root, 'INDEX.md')).text(),
+    '/home/web/blog/INDEX.md',
+  );
+  expect(html).toContain('>~~draft~~</a>');
+  expect(html).not.toContain('<del>');
+});

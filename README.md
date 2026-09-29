@@ -469,6 +469,22 @@ Create a directory yourself, for example `content/blog/my-first-post/`, and add
 an `INDEX.md` containing the post. Directory names become the post URLs; no IDs
 are generated. Keep the post's images and attachments in the same directory
 (subdirectories are supported). The first paragraph becomes the clickable preview.
+
+Folders above the article folder define its categories. For example,
+`content/blog/tutorials/cows/how-to-skin-a-cow/INDEX.md` belongs to
+`tutorials > cows`. Categories can nest to any depth; articles directly under
+`content/blog/` have no category. Each category gets a generated `INDEX.md`
+listing all articles in that category and its descendants, newest first, with
+the same ten-post pagination as the root index. Create category folders without
+an authored index; the build supplies it. Article folders are leaves for blog
+discovery, so their attachment subdirectories do not become categories.
+
+Categorized articles and their listing previews show muted breadcrumb links
+under the title. Each link opens that category's index. Folder names are used
+as the category labels, including spaces and Unicode. If a categorized article
+has no level-one heading in its body, its frontmatter title is displayed above
+the breadcrumb.
+
 Use YAML frontmatter at the beginning of every post:
 
 ```md
@@ -501,6 +517,8 @@ Every `bun run build` scans posts, validates their metadata, and generates:
 
 - `blog/INDEX.md`: latest posts, newest date first (directory name breaks date ties).
 - `blog/pages/2/INDEX.md`, etc.: older posts, with 10 posts per page.
+- `blog/<category>/INDEX.md` and nested category indexes: all descendant posts,
+  with older pages at `<category>/pages/2/INDEX.md`, etc.
 - `blog/tags/INDEX.md`: all tags and post counts.
 - `blog/tags/<tag-id>/INDEX.md`: posts for a tag, also paginated at 10.
 
@@ -511,18 +529,20 @@ The existing terminal renderer handles previews and navigation.
 Generation runs in a temporary content copy before static publishing and lazy
 filesystem indexing; it does not rewrite source posts or trigger watch loops.
 `content/blog/INDEX.md` is a fallback placeholder; the build replaces it in the
-staged copy. `pages/` and `tags/` are reserved for generated output, rebuilt from
-current posts each time. Invalid metadata or missing thumbnail files fail the build
+staged copy. `pages/` and `tags/` are reserved at the blog root and in category
+folders. Generated pagination and root tag indexes are rebuilt from current posts
+each time. Generated category indexes carry `blog_category: true` frontmatter so
+repeated builds distinguish them from articles. Invalid metadata or missing thumbnail files fail the build
 with the offending post path. To generate indexes separately in a staging copy,
 run `bun run build:blog /path/to/staged/blog` (this replaces that directory's
-`INDEX.md`, `pages/`, and `tags/`).
+`INDEX.md`, `pages/`, and `tags/`, plus category indexes and pagination).
 
 ### Index templates
 
 Blog indexes use [Handlebars](https://handlebarsjs.com/guide/expressions.html) at
 build time. Edit these templates to change their Markdown layout:
 
-- `scripts/templates/blog/index.md.hbs`: blog pages and individual tag pages.
+- `scripts/templates/blog/index.md.hbs`: blog, category, and individual tag pages.
 - `scripts/templates/blog/tags.md.hbs`: the directory of tags and post counts.
 
 The development watcher rebuilds when either template changes. Handlebars is a
@@ -531,7 +551,10 @@ Post files remain ordinary Markdown and are not processed as templates.
 
 The listing template receives `title`, `blogUrl`, `showBlogLink`, `tagsUrl`, `page`, `pageCount`,
 `newerUrl`, `olderUrl`, and `posts`. Each post has `title`, `date`, `excerpt`, `url`,
-`thumbnailUrl`, and `tags` (each with `name` and `url`). Optional URLs are `null`.
+`thumbnailUrl`, `tags`, and `categories` (both arrays with `name` and `url`).
+Category links are ordered from outermost to innermost. The default template marks
+them with the link title `"blog-category"` so the renderer displays the breadcrumb
+in muted navigation beneath the article title. Optional URLs are `null`.
 The tags template receives `blogUrl` and `tags`, each with `name`, `url`, and `count`.
 All URLs are relative to the generated index, including pagination and tag pages.
 
