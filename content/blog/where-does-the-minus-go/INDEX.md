@@ -72,3 +72,5 @@ We still have 16 combinations with 4 bits. But we changed the range to run from 
 The bits themselves don't tell us whether a number is signed or unsigned. `1011` can mean 11 as an unsigned number or -5 as a four-bit signed number (in the case of two's complement). Therefore, we need to somehow mark what kind of number is represented within the bits.
 
 And voilà, we found somewhere to put the minus without adding a new symbol.
+
+Next, let's put those bits to work with addition, subtraction, and logical operations in [ALU is not a metal](../alu-is-not-a-metal/INDEX.md).

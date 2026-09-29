@@ -251,4 +251,4 @@ Then add up the values of the cups with eggs in them. Empty cups contribute noth
 
 That's the trick: the cups tell us the place values, and the eggs tell us which values to add. To turn a decimal number into binary, fill the cups; to turn it back, add up the values of the filled cups.
 
-I hope this makes binary a little easier to picture. In future parts, we'll explore why computers use these two states, what else our rows of egg cups can represent, and how to arrange the eggs to represent negative numbers too.
+I hope this makes binary a little easier to picture. Next, we'll figure out how to arrange the eggs to represent negative numbers in [Where does the minus go?](../where-does-the-minus-go/INDEX.md).
