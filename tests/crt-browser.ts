@@ -16,20 +16,20 @@ try {
     await startup.locator('html').getAttribute('data-crt-curved'),
     'ready',
   );
-  assert.match(
+  assert.equal(
     await startup
       .locator('.crt-viewport')
       .evaluate(node => getComputedStyle(node).filter),
-    /crt-curve/,
+    'none',
   );
   assert.equal(await startup.locator('#crt-curve').count(), 1);
   assert.equal(
     await startup.locator('body > .crt-filter #crt-curve').count(),
     1,
   );
-  await startup.evaluate(() => localStorage.setItem('portfolio:crt', 'off'));
+  await startup.evaluate(() => localStorage.setItem('portfolio:crt', 'on'));
   await startup.reload();
-  assert.equal(await startup.locator('html').getAttribute('data-crt'), 'off');
+  assert.equal(await startup.locator('html').getAttribute('data-crt'), 'on');
   await startup.close();
   const page = await browser.newPage({viewport: {width: 1280, height: 1000}});
   let releaseImage!: () => void;
@@ -54,7 +54,8 @@ try {
   releaseImage();
   await portrait.evaluate(node => (node as HTMLImageElement).decode());
   assert.deepEqual(await portrait.boundingBox(), reserved);
-  assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+  assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+  await toggle.click();
   assert.equal(
     await page
       .locator('.crt-screen')
@@ -192,6 +193,7 @@ try {
     viewport: {width: 1280, height: 900},
   });
   await mousePage.goto(base);
+  await mousePage.getByRole('button', {name: 'CRT effect'}).click();
   await mousePage.locator('.crt-pointer').waitFor({state: 'attached'});
   await mousePage.mouse.move(640, 450);
   await mousePage.waitForFunction(

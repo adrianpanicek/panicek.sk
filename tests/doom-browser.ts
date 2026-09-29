@@ -287,6 +287,7 @@ try {
   console.log('PASS Doom HTTP cache avoids a second full WebAssembly transfer');
 
   const page = await browser.newPage({viewport: {width: 1600, height: 600}});
+  await page.addInitScript(() => localStorage.setItem('portfolio:crt', 'on'));
   await instrument(page);
   let requests = 0;
   let assets = 0;

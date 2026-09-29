@@ -22,6 +22,7 @@ try {
           'false',
     );
   await ready();
+  await page.getByRole('button', {name: 'CRT effect'}).click();
   assert.ok(!requests.some(url => url.endsWith('/vim.js')));
   const input = page.locator('#command');
   async function open(command: string) {

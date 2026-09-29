@@ -6,14 +6,13 @@ import {countVisitor} from '../visitors';
 
 export function useDisplay() {
   const [config, setConfig] = useState({
-    crt: true,
-    bloom: false,
+    crt: false,
     animations: true,
   });
   const [ready, setReady] = useState(false);
 
   useLayoutEffect(() => {
-    setConfig(readDisplayConfig(defaultBloom()));
+    setConfig(readDisplayConfig());
     setReady(true);
   }, []);
 
@@ -24,7 +23,7 @@ export function useDisplay() {
 
     const root = document.documentElement;
     root.dataset.crt = config.crt ? 'on' : 'off';
-    root.dataset.bloom = config.bloom ? 'on' : 'off';
+    root.dataset.bloom = config.crt && defaultBloom() ? 'on' : 'off';
     root.dataset.animations = config.animations ? 'on' : 'off';
   }, [config, ready]);
 
@@ -50,13 +49,14 @@ export function useDisplay() {
         }
       }
 
-      if (key === 'bloom') {
-        document.documentElement.dataset.bloom = next.bloom ? 'on' : 'off';
+      if (key === 'crt') {
+        document.documentElement.dataset.bloom =
+          next.crt && defaultBloom() ? 'on' : 'off';
         window.dispatchEvent(new Event('display-config-change'));
       }
 
       setConfig(next);
-      saveDisplayConfig(next, defaultBloom());
+      saveDisplayConfig(next);
     },
   };
 }
@@ -86,7 +86,7 @@ export function DisplayControls({
       {visitors !== undefined && (
         <span id="visitor-count">visitors: {visitors.toLocaleString()}</span>
       )}
-      {(['crt', 'bloom', 'animations'] as const).map(key => (
+      {(['crt', 'animations'] as const).map(key => (
         <button
           key={key}
           id={`${key}-toggle`}
@@ -95,16 +95,10 @@ export function DisplayControls({
           aria-label={
             {
               crt: 'CRT effect',
-              bloom: 'Bloom effect',
               animations: 'Animations',
             }[key]
           }
           aria-pressed={display.config[key]}
-          title={
-            key === 'bloom'
-              ? 'On: highlight bloom. Off: text shadows and image glow.'
-              : undefined
-          }
           onClick={() => display.toggle(key)}
         >
           {key}: {display.config[key] ? 'on' : 'off'}

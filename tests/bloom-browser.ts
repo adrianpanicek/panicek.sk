@@ -21,7 +21,7 @@ for (const engine of [chromium, firefox]) {
       route.fulfill({json: {visitors: 42}}),
     );
     await page.goto(process.env.TEST_URL || 'http://127.0.0.1:4321');
-    const toggle = page.locator('#bloom-toggle');
+    const toggle = page.locator('#crt-toggle');
     await toggle.waitFor();
     await idle();
     await page.locator('#visitor-count').waitFor();
@@ -37,12 +37,7 @@ for (const engine of [chromium, firefox]) {
         controlBox.x + controlBox.width - footerBox.x - footerBox.width,
       ) < 2,
     );
-    for (const id of [
-      'visitor-count',
-      'crt-toggle',
-      'bloom-toggle',
-      'animations-toggle',
-    ]) {
+    for (const id of ['visitor-count', 'crt-toggle', 'animations-toggle']) {
       assert.ok(
         (
           await page
@@ -55,24 +50,22 @@ for (const engine of [chromium, firefox]) {
       await page
         .locator('footer button')
         .evaluateAll(nodes => nodes.map(n => n.id)),
-      ['reset-filesystem', 'crt-toggle', 'bloom-toggle', 'animations-toggle'],
+      ['reset-filesystem', 'crt-toggle', 'animations-toggle'],
     );
     assert.equal(await page.locator('footer #status, footer #stop').count(), 0);
-    assert.equal(
-      await toggle.textContent(),
-      `bloom: ${engine === firefox ? 'off' : 'on'}`,
-    );
+    assert.equal(await toggle.textContent(), 'crt: off');
+    assert.equal(await page.locator('#bloom-toggle').count(), 0);
     for (const enabled of [true, false, true, false]) {
       if ((await toggle.getAttribute('aria-pressed')) !== String(enabled)) {
         await toggle.click();
       }
       assert.equal(
         await page.locator('#crt-curve feGaussianBlur').count(),
-        enabled ? 1 : 0,
+        enabled && engine !== firefox ? 1 : 0,
       );
       assert.equal(
         await page.locator('#crt-curve feComposite').count(),
-        enabled ? 1 : 0,
+        enabled && engine !== firefox ? 1 : 0,
       );
       assert.equal(
         await page.locator('#crt-curve feDisplacementMap').count(),
@@ -82,19 +75,18 @@ for (const engine of [chromium, firefox]) {
         await page
           .locator('#transcript')
           .evaluate(n => getComputedStyle(n).textShadow === 'none'),
-        enabled,
+        !enabled || engine !== firefox,
       );
       const copy = page.locator('.crt-image-bloom').first();
       const portrait = page.locator('.markdown img').first();
       await portrait.scrollIntoViewIfNeeded();
       await portrait.evaluate(n => (n as HTMLImageElement).decode());
-      assert.equal(await copy.isVisible(), !enabled);
+      assert.equal(await copy.isVisible(), enabled && engine === firefox);
       await page.reload();
       await toggle.waitFor();
       await idle();
       assert.equal(await toggle.getAttribute('aria-pressed'), String(enabled));
     }
-    await page.locator('#crt-toggle').click();
     assert.equal(
       await page.locator('.crt-image-bloom').first().isVisible(),
       false,
@@ -112,7 +104,7 @@ for (const engine of [chromium, firefox]) {
     assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
     const reopened = await page.context().newPage();
     await reopened.goto(process.env.TEST_URL || 'http://127.0.0.1:4321');
-    await reopened.locator('#bloom-toggle').waitFor();
+    await reopened.locator('#crt-toggle').waitFor();
     assert.equal(
       await reopened.locator('html').getAttribute('data-crt'),
       'off',
@@ -131,7 +123,7 @@ for (const engine of [chromium, firefox]) {
     );
     await page.route('**/assets/client.js', route => route.abort());
     await page.reload();
-    assert.equal(await page.locator('#crt-curve feGaussianBlur').count(), 1);
+    assert.equal(await page.locator('#crt-curve feGaussianBlur').count(), 0);
     console.log(
       `PASS ${engine.name()} footer and bloom comparison, persistence, CRT off and early boot`,
     );

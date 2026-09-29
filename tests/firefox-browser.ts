@@ -8,6 +8,7 @@ try {
   // must visibly bend even before the client bundle loads.
   const visual = await browser.newPage({viewport: {width: 1280, height: 900}});
   await visual.route('**/assets/client.js', route => route.abort());
+  await visual.addInitScript(() => localStorage.setItem('portfolio:crt', 'on'));
   await visual.goto(base);
   await visual.evaluate(() => {
     const viewport = document.querySelector<HTMLElement>('.crt-viewport')!;
@@ -71,6 +72,7 @@ try {
         'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
   );
+  await page.getByRole('button', {name: 'CRT effect'}).click();
   const portrait = page.locator('.markdown img').first();
   await portrait.scrollIntoViewIfNeeded();
   await portrait.evaluate(node => (node as HTMLImageElement).decode());

@@ -11,62 +11,52 @@ function storage(initial: Record<string, string> = {}) {
   };
 }
 
-test('saving either display setting preserves the other across new reads', () => {
+test('saving display settings preserves the other across new reads', () => {
   const saved = storage();
-  saveDisplayConfig({crt: false}, true, saved);
-  saveDisplayConfig({bloom: false}, true, saved);
-  expect(readDisplayConfig(true, saved)).toEqual({
+  saveDisplayConfig({crt: false}, saved);
+  saveDisplayConfig({animations: false}, saved);
+  expect(readDisplayConfig(saved)).toEqual({
     crt: false,
-    bloom: false,
-    animations: true,
+    animations: false,
   });
-  saveDisplayConfig({crt: true}, true, saved);
-  expect(readDisplayConfig(false, saved)).toEqual({
+  saveDisplayConfig({crt: true}, saved);
+  expect(readDisplayConfig(saved)).toEqual({
     crt: true,
-    bloom: false,
-    animations: true,
+    animations: false,
   });
   expect(JSON.parse(saved.getItem('portfolio:config')!)).toEqual({
     crt: true,
-    bloom: false,
-    animations: true,
+    animations: false,
   });
 });
 
 test('existing choices migrate when saving and explicit configuration wins over legacy keys', () => {
   const saved = storage({'portfolio:crt': 'off', 'portfolio:bloom': 'on'});
-  expect(readDisplayConfig(false, saved)).toEqual({
+  expect(readDisplayConfig(saved)).toEqual({
     crt: false,
-    bloom: true,
     animations: true,
   });
-  saveDisplayConfig({bloom: false}, false, saved);
-  expect(readDisplayConfig(true, saved)).toEqual({
-    crt: false,
-    bloom: false,
+  saveDisplayConfig({crt: true}, saved);
+  expect(readDisplayConfig(saved)).toEqual({
+    crt: true,
     animations: true,
   });
 });
 
 test('missing, malformed, and unavailable storage use valid browser defaults', () => {
-  expect(readDisplayConfig(false, storage())).toEqual({
-    crt: true,
-    bloom: false,
+  expect(readDisplayConfig(storage())).toEqual({
+    crt: false,
     animations: true,
   });
-  expect(
-    readDisplayConfig(true, storage({'portfolio:config': '{bad'})),
-  ).toEqual({
-    crt: true,
-    bloom: true,
+  expect(readDisplayConfig(storage({'portfolio:config': '{bad'}))).toEqual({
+    crt: false,
     animations: true,
   });
   expect(
     readDisplayConfig(
-      false,
       storage({'portfolio:config': '{"crt":"off","bloom":true}'}),
     ),
-  ).toEqual({crt: true, bloom: true, animations: true});
+  ).toEqual({crt: false, animations: true});
   const blocked = {
     getItem: () => {
       throw new Error('blocked');
@@ -75,21 +65,19 @@ test('missing, malformed, and unavailable storage use valid browser defaults', (
       throw new Error('blocked');
     },
   };
-  expect(readDisplayConfig(false, blocked)).toEqual({
-    crt: true,
-    bloom: false,
+  expect(readDisplayConfig(blocked)).toEqual({
+    crt: false,
     animations: true,
   });
-  expect(() => saveDisplayConfig({crt: false}, false, blocked)).not.toThrow();
+  expect(() => saveDisplayConfig({crt: false}, blocked)).not.toThrow();
 });
 
-test('animation preference persists without changing CRT or bloom', () => {
+test('animation preference persists independently of CRT', () => {
   const saved = storage();
-  saveDisplayConfig({animations: false}, true, saved);
-  saveDisplayConfig({crt: false}, true, saved);
-  expect(readDisplayConfig(true, saved)).toEqual({
+  saveDisplayConfig({animations: false}, saved);
+  saveDisplayConfig({crt: false}, saved);
+  expect(readDisplayConfig(saved)).toEqual({
     crt: false,
-    bloom: true,
     animations: false,
   });
 });

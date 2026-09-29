@@ -41,7 +41,7 @@ export function renderPage(
   return (
     '<!doctype html>' +
     renderToString(
-      <html lang="en" data-crt="on">
+      <html lang="en" data-crt="off">
         <head>
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
