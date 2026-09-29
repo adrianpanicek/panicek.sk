@@ -1,9 +1,9 @@
-import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { buildBlog } from '../scripts/build-blog';
-import { renderMarkdown } from '../src/markdown';
+import {afterEach, expect, test} from 'bun:test';
+import {mkdtemp, rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {buildBlog} from '../scripts/build-blog';
+import {renderMarkdown} from '../src/markdown';
 
 const roots: string[] = [];
 async function fixture() {
@@ -12,7 +12,9 @@ async function fixture() {
   return root;
 }
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots.splice(0).map(root => rm(root, {recursive: true, force: true})),
+  );
 });
 const id = (n: number) => `post-${n}`;
 async function post(root: string, n: number, extra = '') {
@@ -25,7 +27,9 @@ async function post(root: string, n: number, extra = '') {
 
 test('latest posts paginate at ten and every preview links to its post markdown', async () => {
   const root = await fixture();
-  for (let n = 1; n <= 11; n++) await post(root, n, n === 11 ? 'thumbnail: cover.svg\n' : '');
+  for (let n = 1; n <= 11; n++) {
+    await post(root, n, n === 11 ? 'thumbnail: cover.svg\n' : '');
+  }
   await Bun.write(
     join(root, id(11), 'cover.svg'),
     '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"/>',
@@ -47,29 +51,39 @@ test('latest posts paginate at ten and every preview links to its post markdown'
   expect(renderMarkdown(second, '/home/web/blog/pages/2/INDEX.md')).toContain(
     '/home/web/blog/INDEX.md',
   );
-  expect(await Bun.file(join(root, id(1), 'attached.txt')).text()).toBe('attachment');
+  expect(await Bun.file(join(root, id(1), 'attached.txt')).text()).toBe(
+    'attachment',
+  );
 });
 
 test('tag indexes paginate and obsolete indexes disappear after posts are removed', async () => {
   const root = await fixture();
-  for (let n = 1; n <= 11; n++) await post(root, n);
+  for (let n = 1; n <= 11; n++) {
+    await post(root, n);
+  }
   await buildBlog(root);
   const tags = await Bun.file(join(root, 'tags/INDEX.md')).text();
   expect(tags).toContain('Rust');
   expect(tags).toContain('C++');
   const paths = [...tags.matchAll(/\]\(([^)]+)\)/g)]
-    .map((match) => match[1])
-    .filter((path) => path.startsWith('./'));
+    .map(match => match[1])
+    .filter(path => path.startsWith('./'));
   expect(paths).toHaveLength(2);
   for (const path of paths) {
     const index = await Bun.file(join(root, 'tags', path)).text();
     expect(index.match(/^## /gm)).toHaveLength(10);
   }
-  for (let n = 1; n <= 11; n++) await rm(join(root, id(n)), { recursive: true });
+  for (let n = 1; n <= 11; n++) {
+    await rm(join(root, id(n)), {recursive: true});
+  }
   await buildBlog(root);
-  expect(await Bun.file(join(root, 'INDEX.md')).text()).toContain('No posts yet.');
+  expect(await Bun.file(join(root, 'INDEX.md')).text()).toContain(
+    'No posts yet.',
+  );
   expect(await Bun.file(join(root, 'pages/2/INDEX.md')).exists()).toBe(false);
-  for (const path of paths) expect(await Bun.file(join(root, 'tags', path)).exists()).toBe(false);
+  for (const path of paths) {
+    expect(await Bun.file(join(root, 'tags', path)).exists()).toBe(false);
+  }
 });
 
 test('invalid metadata and missing thumbnails fail with the post path', async () => {
@@ -78,7 +92,10 @@ test('invalid metadata and missing thumbnails fail with the post path', async ()
   await expect(buildBlog(root)).rejects.toThrow(id(1));
   await post(root, 1);
   const file = join(root, id(1), 'INDEX.md');
-  await Bun.write(file, (await Bun.file(file).text()).replace('2026-09-01', '2026-02-30'));
+  await Bun.write(
+    file,
+    (await Bun.file(file).text()).replace('2026-09-01', '2026-02-30'),
+  );
   await expect(buildBlog(root)).rejects.toThrow('date');
 });
 
@@ -131,7 +148,9 @@ test('custom Handlebars templates render post and tag indexes from build data', 
   expect(tags).toContain('[Rust]');
   expect(tags).toContain(': 1');
   const tagLink = tags.match(/\[Rust\]\(([^)]+)\)/)![1];
-  expect(await Bun.file(join(root, 'tags', tagLink)).text()).toContain('# Tag: Rust');
+  expect(await Bun.file(join(root, 'tags', tagLink)).text()).toContain(
+    '# Tag: Rust',
+  );
 });
 
 test('templates escape Markdown labels without double escaping ampersands', async () => {
@@ -140,7 +159,10 @@ test('templates escape Markdown labels without double escaping ampersands', asyn
   const path = join(root, 'post-1/INDEX.md');
   await Bun.write(
     path,
-    (await Bun.file(path).text()).replace('title: Post 1', 'title: "[Rust] & <C++>"'),
+    (await Bun.file(path).text()).replace(
+      'title: Post 1',
+      'title: "[Rust] & <C++>"',
+    ),
   );
   await buildBlog(root);
   const index = await Bun.file(join(root, 'INDEX.md')).text();
@@ -188,12 +210,16 @@ test('nested categories include descendants but exclude siblings and root posts'
   expect(child).toContain('[Tags](../../tags/INDEX.md)');
   expect(await Bun.file(article).text()).toBe(original);
   await buildBlog(root);
-  expect(await Bun.file(join(root, 'tutorials/INDEX.md')).text()).toBe(category);
+  expect(await Bun.file(join(root, 'tutorials/INDEX.md')).text()).toBe(
+    category,
+  );
 });
 
 test('category pagination and tag pages keep nested links and remove stale pages', async () => {
   const root = await fixture();
-  for (let n = 1; n <= 11; n++) await post(join(root, 'tutorials/cows'), n);
+  for (let n = 1; n <= 11; n++) {
+    await post(join(root, 'tutorials/cows'), n);
+  }
   await buildBlog(root);
   const older = await Bun.file(join(root, 'tutorials/pages/2/INDEX.md')).text();
   expect(older).toContain('(../../cows/post-1/INDEX.md)');
@@ -203,32 +229,49 @@ test('category pagination and tag pages keep nested links and remove stale pages
   expect(await Bun.file(join(root, 'tags', rust)).text()).toContain(
     '(../../tutorials/cows/post-11/INDEX.md)',
   );
-  await rm(join(root, 'tutorials/cows/post-11'), { recursive: true });
+  await rm(join(root, 'tutorials/cows/post-11'), {recursive: true});
   await buildBlog(root);
-  expect(await Bun.file(join(root, 'tutorials/pages/2/INDEX.md')).exists()).toBe(false);
-  expect(await Bun.file(join(root, 'tutorials/cows/pages/2/INDEX.md')).exists()).toBe(false);
-  for (let n = 1; n <= 10; n++)
-    await rm(join(root, `tutorials/cows/post-${n}`), { recursive: true });
+  expect(
+    await Bun.file(join(root, 'tutorials/pages/2/INDEX.md')).exists(),
+  ).toBe(false);
+  expect(
+    await Bun.file(join(root, 'tutorials/cows/pages/2/INDEX.md')).exists(),
+  ).toBe(false);
+  for (let n = 1; n <= 10; n++) {
+    await rm(join(root, `tutorials/cows/post-${n}`), {recursive: true});
+  }
   await buildBlog(root);
-  expect(await Bun.file(join(root, 'tutorials/INDEX.md')).text()).toContain('No posts yet.');
+  expect(await Bun.file(join(root, 'tutorials/INDEX.md')).text()).toContain(
+    'No posts yet.',
+  );
 });
 
 test('nested article breadcrumbs link every category below the title and escape names', async () => {
-  const raw = '---\ntitle: Article\ndate: 2026-09-01\ntags: []\n---\n\n# Article\n\nBody.\n';
+  const raw =
+    '---\ntitle: Article\ndate: 2026-09-01\ntags: []\n---\n\n# Article\n\nBody.\n';
   for (const prefix of ['/home/web/blog', '/blog']) {
-    const html = renderMarkdown(raw, `${prefix}/Tips & tricks/cows/<calves>/article/INDEX.md`);
-    expect(html).toContain('<h1>Article</h1>\n<nav class="blog-breadcrumb"');
-    expect(html).toContain('href="https://panicek.sk/blog/Tips%20%26%20tricks/"');
-    expect(html).toContain(`data-file="${prefix}/Tips &amp; tricks/cows/INDEX.md"`);
+    const html = renderMarkdown(
+      raw,
+      `${prefix}/Tips & tricks/cows/<calves>/article/INDEX.md`,
+    );
+    expect(html).toContain('<h1>Article</h1><nav class="blog-breadcrumb"');
+    expect(html).toContain(
+      'href="https://panicek.sk/blog/Tips%20%26%20tricks/"',
+    );
+    expect(html).toContain(
+      `data-file="${prefix}/Tips &amp; tricks/cows/INDEX.md"`,
+    );
     expect(html).toContain('>Tips &amp; tricks</a>');
     expect(html).toContain('>&lt;calves&gt;</a>');
     expect(html.match(/ &gt; /g)).toHaveLength(2);
     expect(html).not.toContain('>article</a>');
   }
-  expect(renderMarkdown(raw, '/home/web/blog/article/INDEX.md')).not.toContain('blog-breadcrumb');
-  expect(renderMarkdown(raw, '/home/web/docs/category/article/INDEX.md')).not.toContain(
+  expect(renderMarkdown(raw, '/home/web/blog/article/INDEX.md')).not.toContain(
     'blog-breadcrumb',
   );
+  expect(
+    renderMarkdown(raw, '/home/web/docs/category/article/INDEX.md'),
+  ).not.toContain('blog-breadcrumb');
 });
 
 test('listing previews show category breadcrumbs without classifying indexes as articles', async () => {
@@ -241,13 +284,17 @@ test('listing previews show category breadcrumbs without classifying indexes as 
     '/home/web/blog/INDEX.md',
   );
   expect(html.match(/class="blog-breadcrumb"/g)).toHaveLength(1);
-  expect(html).toContain('href="https://panicek.sk/blog/Tips%20%26%20tricks/cows/"');
+  expect(html).toContain(
+    'href="https://panicek.sk/blog/Tips%20%26%20tricks/cows/"',
+  );
   const category = renderMarkdown(
     await Bun.file(join(root, 'Tips & tricks/cows/INDEX.md')).text(),
     '/home/web/blog/Tips & tricks/cows/INDEX.md',
   );
   expect(category).not.toMatch(/<h1>.*<\/h1>\n<nav/);
-  expect(category).toContain('data-file="/home/web/blog/Tips &amp; tricks/INDEX.md"');
+  expect(category).toContain(
+    'data-file="/home/web/blog/Tips &amp; tricks/INDEX.md"',
+  );
 });
 
 test('a malformed nested article fails without overwriting authored content', async () => {
@@ -265,7 +312,9 @@ test('categorized articles without a body heading use their metadata title above
   await Bun.write(join(root, 'tutorials/article/INDEX.md'), raw);
   await buildBlog(root);
   const html = renderMarkdown(raw, '/home/web/blog/tutorials/article/INDEX.md');
-  expect(html).toContain('<h1>A &lt;cow&gt; &amp; calf</h1>\n<nav class="blog-breadcrumb"');
+  expect(html).toContain(
+    '<h1>A &lt;cow&gt; &amp; calf</h1><nav class="blog-breadcrumb"',
+  );
   expect(html).toContain('>tutorials</a>');
   expect(html).toContain('<p>Opening paragraph.</p>');
 });

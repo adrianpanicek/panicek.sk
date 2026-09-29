@@ -1,19 +1,21 @@
-import { expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import {expect, test} from 'bun:test';
+import {mkdtemp, rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 
 const script = join(import.meta.dir, '../scripts/blog-only-change.ts');
 
 test('CI exempts only nonempty blog-only diffs, including deletions and renames', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'blog-change-'));
   const git = (...args: string[]) => {
-    const result = Bun.spawnSync(['git', ...args], { cwd });
-    if (result.exitCode !== 0) throw new Error(result.stderr.toString());
+    const result = Bun.spawnSync(['git', ...args], {cwd});
+    if (result.exitCode !== 0) {
+      throw new Error(result.stderr.toString());
+    }
     return result.stdout.toString().trim();
   };
   const classify = (base: string) => {
-    const result = Bun.spawnSync([process.execPath, script, base], { cwd });
+    const result = Bun.spawnSync([process.execPath, script, base], {cwd});
     expect(result.exitCode).toBe(0);
     return result.stdout.toString().trim();
   };
@@ -47,10 +49,13 @@ test('CI exempts only nonempty blog-only diffs, including deletions and renames'
     await Bun.write(join(cwd, 'README.md'), 'Changed site\n');
     const mixed = commit();
     expect(classify(base)).toBe('false');
-    await Bun.write(join(cwd, 'content/blogger/post.md'), '# Not the blog directory\n');
+    await Bun.write(
+      join(cwd, 'content/blogger/post.md'),
+      '# Not the blog directory\n',
+    );
     commit();
     expect(classify(mixed)).toBe('false');
   } finally {
-    await rm(cwd, { recursive: true, force: true });
+    await rm(cwd, {recursive: true, force: true});
   }
 });

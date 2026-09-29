@@ -14,7 +14,8 @@ if (/^[a-f0-9]{40,64}$/.test(base) && !/^0+$/.test(base)) {
   ]);
   if (diff.exitCode === 0) {
     const paths = diff.stdout.toString().split('\0').filter(Boolean);
-    blogOnly = paths.length > 0 && paths.every((path) => path.startsWith('content/blog/'));
+    blogOnly =
+      paths.length > 0 && paths.every(path => path.startsWith('content/blog/'));
   }
 }
 console.log(String(blogOnly));

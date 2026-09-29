@@ -1,13 +1,20 @@
-import { describe, expect, test } from 'bun:test';
-import { rawPath, resolveLink, catCommand, isBlogPath } from '../src/paths';
-import { renderMarkdown } from '../src/markdown';
+import {describe, expect, test} from 'bun:test';
+import {rawPath, resolveLink, catCommand, isBlogPath} from '../src/paths';
+import {renderMarkdown} from '../src/markdown';
 
 describe('virtual paths', () => {
   test('blog navigation recognizes canonical, short and home aliases', () => {
-    for (const path of ['/blog', '/blog/post/', '/home/web/blog/INDEX.md', '/~/blog/tags/'])
+    for (const path of [
+      '/blog',
+      '/blog/post/',
+      '/home/web/blog/INDEX.md',
+      '/~/blog/tags/',
+    ]) {
       expect(isBlogPath(path)).toBe(true);
-    for (const path of ['/', '/blogger', '/home/web/blog/../ABOUT.md'])
+    }
+    for (const path of ['/', '/blogger', '/home/web/blog/../ABOUT.md']) {
       expect(isBlogPath(path)).toBe(false);
+    }
   });
   test('home notation works for arbitrary nested files', () => {
     expect(rawPath('/~/notes/a%20b.md')).toBe('/home/web/notes/a b.md');
@@ -20,10 +27,13 @@ describe('virtual paths', () => {
     expect(resolveLink('../CAREER.md', '/home/web/notes/index.md')?.path).toBe(
       '/home/web/CAREER.md',
     );
-    expect(resolveLink('~/CONTACTS.md', '/tmp/test.md')?.path).toBe('/home/web/CONTACTS.md');
-    expect(resolveLink('https://panicek.sk/home/web/CAREER.md', '/tmp/test.md')?.path).toBe(
-      '/home/web/CAREER.md',
+    expect(resolveLink('~/CONTACTS.md', '/tmp/test.md')?.path).toBe(
+      '/home/web/CONTACTS.md',
     );
+    expect(
+      resolveLink('https://panicek.sk/home/web/CAREER.md', '/tmp/test.md')
+        ?.path,
+    ).toBe('/home/web/CAREER.md');
     expect(resolveLink('https://example.com/a.md', '/tmp/test.md')).toBeNull();
   });
   test('cat operands are safely quoted', () => {
@@ -52,23 +62,25 @@ describe('Markdown output', () => {
 
 describe('command typing', () => {
   test('reveals every character in order', async () => {
-    const { typeText } = await import('../src/typing');
+    const {typeText} = await import('../src/typing');
     const frames: string[] = [];
-    expect(await typeText('cat ~/', (value) => frames.push(value), { delay: 0 })).toBe(true);
+    expect(
+      await typeText('cat ~/', value => frames.push(value), {delay: 0}),
+    ).toBe(true);
     expect(frames).toEqual(['c', 'ca', 'cat', 'cat ', 'cat ~', 'cat ~/']);
   });
   test('cancellation cannot finish the command', async () => {
-    const { typeText } = await import('../src/typing');
+    const {typeText} = await import('../src/typing');
     const controller = new AbortController();
     const frames: string[] = [];
     expect(
       await typeText(
         'cat file',
-        (value) => {
+        value => {
           frames.push(value);
           controller.abort();
         },
-        { delay: 0, signal: controller.signal },
+        {delay: 0, signal: controller.signal},
       ),
     ).toBe(false);
     expect(frames).toEqual(['c']);
@@ -76,7 +88,7 @@ describe('command typing', () => {
 });
 
 test('large Markdown-looking logs stay cheap to display', async () => {
-  const { renderMarkdown } = await import('../src/markdown');
+  const {renderMarkdown} = await import('../src/markdown');
   const text = '# Log\n' + 'value\n'.repeat(50000);
   const start = performance.now();
   const rendered = renderMarkdown(text, '/tmp/log.md');
@@ -87,10 +99,12 @@ test('large Markdown-looking logs stay cheap to display', async () => {
 
 describe('contact display tokens', () => {
   test('decodes repeated ROT13 tokens and leaves other text intact', async () => {
-    const { decodeContactTokens } = await import('../src/contacts');
-    expect(decodeContactTokens('Email {{rot13:nqevna@cnavprx.fx}} / {{rot13:Uryyb}}')).toBe(
-      'Email adrian@panicek.sk / Hello',
-    );
+    const {decodeContactTokens} = await import('../src/contacts');
+    expect(
+      decodeContactTokens(
+        'Email {{rot13:nqevna@cnavprx.fx}} / {{rot13:Uryyb}}',
+      ),
+    ).toBe('Email adrian@panicek.sk / Hello');
     expect(decodeContactTokens('{{unknown:abc}} {{rot13:broken')).toBe(
       '{{unknown:abc}} {{rot13:broken',
     );
@@ -100,31 +114,44 @@ describe('contact display tokens', () => {
     );
     expect(html).toContain('href="mailto:adrian@panicek.sk"');
     expect(
-      renderMarkdown(decodeContactTokens('{{rot13:<fpevcg>nyreg(1)</fpevcg>}}'), '/tmp/a.md'),
+      renderMarkdown(
+        decodeContactTokens('{{rot13:<fpevcg>nyreg(1)</fpevcg>}}'),
+        '/tmp/a.md',
+      ),
     ).not.toContain('<script>');
   });
 });
 
 test('ROT47 contact tokens decode phone and WhatsApp links', async () => {
-  const { decodeContactTokens } = await import('../src/contacts');
-  const contacts = decodeContactTokens(await Bun.file('content/CONTACTS.md').text());
+  const {decodeContactTokens} = await import('../src/contacts');
+  const contacts = decodeContactTokens(
+    await Bun.file('content/CONTACTS.md').text(),
+  );
   expect(contacts).toContain('tel:+421902796000');
-  expect(renderMarkdown(contacts, '/home/web/CONTACTS.md')).toContain('href="tel:+421902796000"');
+  expect(renderMarkdown(contacts, '/home/web/CONTACTS.md')).toContain(
+    'href="tel:+421902796000"',
+  );
   expect(contacts).toContain('+421 902 796 000');
   expect(contacts).toContain('https://wa.me/421902796000');
 });
 
 test('Markdown images resolve relative paths and reject unsafe schemes', () => {
-  const html = renderMarkdown('![Portrait](images/me.png "Portrait")', '/home/web/ABOUT.md');
+  const html = renderMarkdown(
+    '![Portrait](images/me.png "Portrait")',
+    '/home/web/ABOUT.md',
+  );
   expect(html).toContain('src="/home/web/images/me.png"');
   expect(html).toContain('alt="Portrait"');
   expect(html).toContain('loading="lazy"');
   expect(
-    renderMarkdown('![bad](javascript:alert) ![bad](data:image/svg+xml,test)', '/tmp/a.md'),
+    renderMarkdown(
+      '![bad](javascript:alert) ![bad](data:image/svg+xml,test)',
+      '/tmp/a.md',
+    ),
   ).not.toContain('<img');
-  expect(renderMarkdown('![Remote](https://example.com/photo.jpg)', '/tmp/a.md')).toContain(
-    'src="https://example.com/photo.jpg"',
-  );
+  expect(
+    renderMarkdown('![Remote](https://example.com/photo.jpg)', '/tmp/a.md'),
+  ).toContain('src="https://example.com/photo.jpg"');
 });
 
 test('YouTube image syntax embeds only validated video URLs with a fallback link', () => {
@@ -135,10 +162,12 @@ test('YouTube image syntax embeds only validated video URLs with a fallback link
     'https://www.youtube-nocookie.com/embed/abcdefghijk',
   ]) {
     const html = renderMarkdown(`![Demo](${url})`, '/home/web/VIDEO.md');
-    expect(html).toContain('src="https://www.youtube-nocookie.com/embed/abcdefghijk"');
+    expect(html).toContain(
+      'src="https://www.youtube-nocookie.com/embed/abcdefghijk"',
+    );
     expect(html).toContain('title="Demo"');
     expect(html).toContain('loading="lazy"');
-    expect(html).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+    expect(html).toContain('referrerPolicy="strict-origin-when-cross-origin"');
     expect(html).toContain('Open on YouTube');
   }
   for (const url of [
@@ -147,26 +176,37 @@ test('YouTube image syntax embeds only validated video URLs with a fallback link
     'javascript:abcdefghijk',
     'https://youtube.com/watch?v=bad',
   ]) {
-    expect(renderMarkdown(`![Demo](${url})`, '/tmp/a.md')).not.toContain('<iframe');
+    expect(renderMarkdown(`![Demo](${url})`, '/tmp/a.md')).not.toContain(
+      '<iframe',
+    );
   }
-  expect(renderMarkdown('[Demo](https://youtu.be/abcdefghijk)', '/tmp/a.md')).not.toContain(
-    '<iframe',
-  );
-  expect(renderMarkdown('!["<unsafe>"](https://youtu.be/abcdefghijk)', '/tmp/a.md')).not.toContain(
-    'title=""<unsafe>',
-  );
+  expect(
+    renderMarkdown('[Demo](https://youtu.be/abcdefghijk)', '/tmp/a.md'),
+  ).not.toContain('<iframe');
+  expect(
+    renderMarkdown('!["<unsafe>"](https://youtu.be/abcdefghijk)', '/tmp/a.md'),
+  ).not.toContain('title=""<unsafe>');
 });
 
 test('Markdown image layout accepts bounded sizes and named alignments', () => {
   const image = (title: string) =>
-    renderMarkdown(`![Portrait](portrait.png "${title}")`, '/home/web/ABOUT.md');
-  expect(image('width=160 align=right')).toContain('style="width:160px" class="image-right"');
-  expect(image('width=480 align=center')).toContain('class="image-center"');
+    renderMarkdown(
+      `![Portrait](portrait.png "${title}")`,
+      '/home/web/ABOUT.md',
+    );
+  expect(image('width=160 align=right')).toContain(
+    'style="width:160px" class="crt-image image-right"',
+  );
+  expect(image('width=480 align=center')).toContain(
+    'class="crt-image image-center"',
+  );
   expect(image('width=9999')).toContain('style="width:4096px"');
   expect(image('A portrait')).toContain('title="A portrait"');
   expect(image('width=160;position:fixed')).not.toContain('style=');
-  expect(image('width=160 align=evil')).not.toContain('class=');
-  expect(renderMarkdown('![Photo](photo.jpg)', '/tmp/a.md')).not.toContain('style=');
+  expect(image('width=160 align=evil')).not.toContain('image-evil');
+  expect(renderMarkdown('![Photo](photo.jpg)', '/tmp/a.md')).not.toContain(
+    'style=',
+  );
 });
 
 test('Markdown reserves local and explicitly sized remote images before loading', () => {
@@ -174,11 +214,11 @@ test('Markdown reserves local and explicitly sized remote images before loading'
     '![Portrait](portrait.png "width=224 align=right")',
     '/home/web/ABOUT.md',
     'https://panicek.sk',
-    { '/home/web/portrait.png': { width: 400, height: 400 } },
+    {'/home/web/portrait.png': {width: 400, height: 400}},
   );
   expect(local).toContain('width="400" height="400"');
   expect(local).toContain('style="width:224px"');
-  expect(local).toContain('class="image-right"');
+  expect(local).toContain('class="crt-image image-right"');
   const remote = renderMarkdown(
     '![Landscape](https://example.com/photo.jpg "width=800 height=450")',
     '/home/web/ABOUT.md',
@@ -189,7 +229,18 @@ test('Markdown reserves local and explicitly sized remote images before loading'
 test('About portrait is eager while other document images remain lazy', () => {
   const markdown = '![Portrait](portrait.png)';
   expect(renderMarkdown(markdown, '/home/web/ABOUT.md')).toContain(
-    'loading="eager" fetchpriority="high"',
+    'loading="eager" fetchPriority="high"',
   );
-  expect(renderMarkdown(markdown, '/home/web/CAREER.md')).toContain('loading="lazy"');
+  expect(renderMarkdown(markdown, '/home/web/CAREER.md')).toContain(
+    'loading="lazy"',
+  );
+});
+
+test('React Markdown preserves literal code and decodes named text entities', () => {
+  expect(renderMarkdown('`&amp; <tag>`', '/tmp/a.md')).toContain(
+    '<code>&amp;amp; &lt;tag&gt;</code>',
+  );
+  expect(renderMarkdown('A &mdash; B &euro;', '/tmp/a.md')).toContain(
+    'A — B €',
+  );
 });

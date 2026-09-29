@@ -1,15 +1,17 @@
-import { expect, test } from 'bun:test';
-import { chmod, mkdtemp, rm } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { parse } from 'yaml';
+import {expect, test} from 'bun:test';
+import {chmod, mkdtemp, rm} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {parse} from 'yaml';
 
 test('release step publishes only the current master and stops on API errors', async () => {
   const workflow = parse(
-    await Bun.file(join(import.meta.dir, '../.github/workflows/build.yml')).text(),
+    await Bun.file(
+      join(import.meta.dir, '../.github/workflows/build.yml'),
+    ).text(),
   );
   const step = workflow.jobs.publish.steps.find(
-    (step: { name?: string }) => step.name === 'Publish current master build',
+    (step: {name?: string}) => step.name === 'Publish current master build',
   );
   const cwd = await mkdtemp(join(tmpdir(), 'release-workflow-'));
   try {
@@ -58,6 +60,6 @@ printf '%s\\n' "$@" > "$RELEASE_LOG"
       }
     }
   } finally {
-    await rm(cwd, { recursive: true, force: true });
+    await rm(cwd, {recursive: true, force: true});
   }
 });

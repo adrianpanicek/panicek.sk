@@ -1,8 +1,8 @@
-import { describe, expect, test } from 'bun:test';
-import { createDoomCompositor, fitFourByThree } from '../src/doom/compositor';
+import {describe, expect, test} from 'bun:test';
+import {createDoomCompositor, fitFourByThree} from '../src/doom/compositor';
 
-type Handle = { kind: string; id: number };
-type Uniform = { name: string };
+type Handle = {kind: string; id: number};
+type Uniform = {name: string};
 
 class FakeWebGLContext {
   readonly ARRAY_BUFFER = 0x8892;
@@ -46,7 +46,10 @@ class FakeWebGLContext {
   readonly deletedTextures: Handle[] = [];
 
   createShader(type: number): Handle {
-    const shader = { kind: type === this.VERTEX_SHADER ? 'vertex' : 'fragment', id: this.nextId++ };
+    const shader = {
+      kind: type === this.VERTEX_SHADER ? 'vertex' : 'fragment',
+      id: this.nextId++,
+    };
     this.shaders.push(shader);
     return shader;
   }
@@ -70,7 +73,7 @@ class FakeWebGLContext {
   }
 
   createProgram(): Handle {
-    const program = { kind: 'program', id: this.nextId++ };
+    const program = {kind: 'program', id: this.nextId++};
     this.programs.push(program);
     return program;
   }
@@ -91,7 +94,7 @@ class FakeWebGLContext {
   }
 
   createBuffer(): Handle {
-    const buffer = { kind: 'buffer', id: this.nextId++ };
+    const buffer = {kind: 'buffer', id: this.nextId++};
     this.buffers.push(buffer);
     return buffer;
   }
@@ -104,7 +107,7 @@ class FakeWebGLContext {
   }
 
   createTexture(): Handle {
-    const texture = { kind: 'texture', id: this.nextId++ };
+    const texture = {kind: 'texture', id: this.nextId++};
     this.textures.push(texture);
     return texture;
   }
@@ -134,7 +137,7 @@ class FakeWebGLContext {
   vertexAttribPointer(): void {}
 
   getUniformLocation(_program: Handle, name: string): Uniform {
-    return { name };
+    return {name};
   }
 
   uniform1i(): void {}
@@ -172,15 +175,20 @@ class FakeWebGLContext {
 class FakeCanvas extends EventTarget {
   width = 0;
   height = 0;
-  style = { width: '', height: '' };
-  private readonly listeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
+  style = {width: '', height: ''};
+  private readonly listeners = new Map<
+    string,
+    Set<EventListenerOrEventListenerObject>
+  >();
 
   constructor(readonly gl: FakeWebGLContext) {
     super();
   }
 
   getContext(contextId: string): WebGLRenderingContext | null {
-    return contextId === 'webgl' ? (this.gl as unknown as WebGLRenderingContext) : null;
+    return contextId === 'webgl'
+      ? (this.gl as unknown as WebGLRenderingContext)
+      : null;
   }
 
   override addEventListener(
@@ -189,7 +197,9 @@ class FakeCanvas extends EventTarget {
     options?: AddEventListenerOptions | boolean,
   ): void {
     super.addEventListener(type, callback, options);
-    if (!callback) return;
+    if (!callback) {
+      return;
+    }
     const listeners = this.listeners.get(type) ?? new Set();
     listeners.add(callback);
     this.listeners.set(type, listeners);
@@ -201,11 +211,16 @@ class FakeCanvas extends EventTarget {
     options?: EventListenerOptions | boolean,
   ): void {
     super.removeEventListener(type, callback, options);
-    if (callback) this.listeners.get(type)?.delete(callback);
+    if (callback) {
+      this.listeners.get(type)?.delete(callback);
+    }
   }
 
   listenerCount(): number {
-    return [...this.listeners.values()].reduce((count, listeners) => count + listeners.size, 0);
+    return [...this.listeners.values()].reduce(
+      (count, listeners) => count + listeners.size,
+      0,
+    );
   }
 }
 
@@ -214,25 +229,34 @@ function asCanvas(canvas: FakeCanvas): HTMLCanvasElement {
 }
 
 function memoryWithFrame(byteLength: number): WebAssembly.Memory {
-  const memory = new WebAssembly.Memory({ initial: 1 });
+  const memory = new WebAssembly.Memory({initial: 1});
   new Uint8Array(memory.buffer, 8, byteLength).fill(127);
   return memory;
 }
 
 describe('Doom compositor geometry', () => {
   test.each([
-    [1920, 1080, { width: 1440, height: 1080 }],
-    [1280, 1024, { width: 1280, height: 960 }],
-    [800, 1200, { width: 800, height: 600 }],
-  ])('fits %ix%i inside a four-by-three boundary', (width, height, expected) => {
-    expect(fitFourByThree(width, height)).toEqual(expected);
-  });
+    [1920, 1080, {width: 1440, height: 1080}],
+    [1280, 1024, {width: 1280, height: 960}],
+    [800, 1200, {width: 800, height: 600}],
+  ])(
+    'fits %ix%i inside a four-by-three boundary',
+    (width, height, expected) => {
+      expect(fitFourByThree(width, height)).toEqual(expected);
+    },
+  );
 });
 
 describe('Doom WebGL compositor', () => {
   test('presents cached frames at animation cadence and cancels presentation on disposal', () => {
-    const request = Object.getOwnPropertyDescriptor(globalThis, 'requestAnimationFrame');
-    const cancel = Object.getOwnPropertyDescriptor(globalThis, 'cancelAnimationFrame');
+    const request = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'requestAnimationFrame',
+    );
+    const cancel = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'cancelAnimationFrame',
+    );
     const callbacks = new Map<number, FrameRequestCallback>();
     let id = 0;
     Object.defineProperty(globalThis, 'requestAnimationFrame', {
@@ -248,7 +272,9 @@ describe('Doom WebGL compositor', () => {
     });
     try {
       const gl = new FakeWebGLContext();
-      const compositor = createDoomCompositor(asCanvas(new FakeCanvas(gl)), { crt: true });
+      const compositor = createDoomCompositor(asCanvas(new FakeCanvas(gl)), {
+        crt: true,
+      });
       compositor.resize(640, 480);
       compositor.draw(memoryWithFrame(16), 8, 2, 2);
       expect(gl.draws).toHaveLength(1);
@@ -264,10 +290,16 @@ describe('Doom WebGL compositor', () => {
       callback(33.4);
       expect(gl.draws).toHaveLength(2);
     } finally {
-      if (request) Object.defineProperty(globalThis, 'requestAnimationFrame', request);
-      else Reflect.deleteProperty(globalThis, 'requestAnimationFrame');
-      if (cancel) Object.defineProperty(globalThis, 'cancelAnimationFrame', cancel);
-      else Reflect.deleteProperty(globalThis, 'cancelAnimationFrame');
+      if (request) {
+        Object.defineProperty(globalThis, 'requestAnimationFrame', request);
+      } else {
+        Reflect.deleteProperty(globalThis, 'requestAnimationFrame');
+      }
+      if (cancel) {
+        Object.defineProperty(globalThis, 'cancelAnimationFrame', cancel);
+      } else {
+        Reflect.deleteProperty(globalThis, 'cancelAnimationFrame');
+      }
     }
   });
 
@@ -279,10 +311,18 @@ describe('Doom WebGL compositor', () => {
     compositor.draw(memory, 8, 2, 2);
     compositor.draw(memory, 8, 2, 2);
 
-    expect(gl.textureParameters).toContainEqual([gl.TEXTURE_MIN_FILTER, gl.NEAREST]);
-    expect(gl.textureParameters).toContainEqual([gl.TEXTURE_MAG_FILTER, gl.NEAREST]);
+    expect(gl.textureParameters).toContainEqual([
+      gl.TEXTURE_MIN_FILTER,
+      gl.NEAREST,
+    ]);
+    expect(gl.textureParameters).toContainEqual([
+      gl.TEXTURE_MAG_FILTER,
+      gl.NEAREST,
+    ]);
     expect(gl.pixelStores).toContainEqual([gl.UNPACK_FLIP_Y_WEBGL, 1]);
-    expect(gl.vectorUniforms.filter(([name]) => name === 'u_textureSize')).toEqual([
+    expect(
+      gl.vectorUniforms.filter(([name]) => name === 'u_textureSize'),
+    ).toEqual([
       ['u_textureSize', 2, 2],
       ['u_textureSize', 2, 2],
     ]);
@@ -293,14 +333,20 @@ describe('Doom WebGL compositor', () => {
       [gl.TRIANGLES, 0, 6],
       [gl.TRIANGLES, 0, 6],
     ]);
-    expect([...new Uint8Array(gl.uploads[0].buffer, gl.uploads[0].byteOffset, 16)]).toEqual(
-      Array(16).fill(127),
-    );
+    expect([
+      ...new Uint8Array(gl.uploads[0].buffer, gl.uploads[0].byteOffset, 16),
+    ]).toEqual(Array(16).fill(127));
   });
 
   test('keeps a four-by-three CSS box and scales its backing store for device pixels', () => {
-    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'devicePixelRatio');
-    Object.defineProperty(globalThis, 'devicePixelRatio', { configurable: true, value: 2 });
+    const descriptor = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'devicePixelRatio',
+    );
+    Object.defineProperty(globalThis, 'devicePixelRatio', {
+      configurable: true,
+      value: 2,
+    });
     try {
       const gl = new FakeWebGLContext();
       const canvas = new FakeCanvas(gl);
@@ -308,12 +354,15 @@ describe('Doom WebGL compositor', () => {
 
       compositor.resize(1920, 1080);
 
-      expect(canvas.style).toEqual({ width: '1440px', height: '1080px' });
+      expect(canvas.style).toEqual({width: '1440px', height: '1080px'});
       expect([canvas.width, canvas.height]).toEqual([2880, 2160]);
       expect(gl.viewports.at(-1)).toEqual([0, 0, 2880, 2160]);
     } finally {
-      if (descriptor) Object.defineProperty(globalThis, 'devicePixelRatio', descriptor);
-      else Reflect.deleteProperty(globalThis, 'devicePixelRatio');
+      if (descriptor) {
+        Object.defineProperty(globalThis, 'devicePixelRatio', descriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'devicePixelRatio');
+      }
     }
   });
 
@@ -328,7 +377,9 @@ describe('Doom WebGL compositor', () => {
 
       compositor.resize(width, height);
 
-      const curve = gl.vectorUniforms.filter(([name]) => name === 'u_curve').at(-1);
+      const curve = gl.vectorUniforms
+        .filter(([name]) => name === 'u_curve')
+        .at(-1);
       expect(curve).toBeDefined();
       expect(curve![1]).toBeCloseTo(expectedX);
       expect(curve![2]).toBeCloseTo(expectedY);
@@ -340,10 +391,10 @@ describe('Doom WebGL compositor', () => {
     const canvas = new FakeCanvas(gl);
     const failures: Error[] = [];
     const compositor = createDoomCompositor(asCanvas(canvas), {
-      onFailure: (error) => failures.push(error),
+      onFailure: error => failures.push(error),
     });
     const memory = memoryWithFrame(16);
-    const lost = new Event('webglcontextlost', { cancelable: true });
+    const lost = new Event('webglcontextlost', {cancelable: true});
 
     canvas.dispatchEvent(lost);
     compositor.draw(memory, 8, 2, 2);
@@ -359,46 +410,55 @@ describe('Doom WebGL compositor', () => {
     expect(failures).toEqual([]);
   });
 
-  test.each(['restore', 'dispose'])('cancels the context recovery deadline on %s', (action) => {
-    const originalSet = globalThis.setTimeout;
-    const originalClear = globalThis.clearTimeout;
-    const timers = new Map<number, () => void>();
-    let nextId = 0;
-    globalThis.setTimeout = ((callback: () => void) => {
-      timers.set(++nextId, callback);
-      return nextId;
-    }) as unknown as typeof setTimeout;
-    globalThis.clearTimeout = ((id: number) => timers.delete(id)) as unknown as typeof clearTimeout;
-    const canvas = new FakeCanvas(new FakeWebGLContext());
-    const failures: Error[] = [];
-    const compositor = createDoomCompositor(asCanvas(canvas), {
-      onFailure: (error) => failures.push(error),
-    });
-    try {
-      canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
-      expect(timers.size).toBe(1);
-      const deadline = [...timers.values()][0];
-      canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
-      expect(timers.size).toBe(1);
-      if (action === 'restore') canvas.dispatchEvent(new Event('webglcontextrestored'));
-      else compositor.dispose();
-      expect(timers.size).toBe(0);
-      deadline();
-      expect(failures).toEqual([]);
-    } finally {
-      compositor.dispose();
-      globalThis.setTimeout = originalSet;
-      globalThis.clearTimeout = originalClear;
-    }
-  });
+  test.each(['restore', 'dispose'])(
+    'cancels the context recovery deadline on %s',
+    action => {
+      const originalSet = globalThis.setTimeout;
+      const originalClear = globalThis.clearTimeout;
+      const timers = new Map<number, () => void>();
+      let nextId = 0;
+      globalThis.setTimeout = ((callback: () => void) => {
+        timers.set(++nextId, callback);
+        return nextId;
+      }) as unknown as typeof setTimeout;
+      globalThis.clearTimeout = ((id: number) =>
+        timers.delete(id)) as unknown as typeof clearTimeout;
+      const canvas = new FakeCanvas(new FakeWebGLContext());
+      const failures: Error[] = [];
+      const compositor = createDoomCompositor(asCanvas(canvas), {
+        onFailure: error => failures.push(error),
+      });
+      try {
+        canvas.dispatchEvent(new Event('webglcontextlost', {cancelable: true}));
+        expect(timers.size).toBe(1);
+        const deadline = [...timers.values()][0];
+        canvas.dispatchEvent(new Event('webglcontextlost', {cancelable: true}));
+        expect(timers.size).toBe(1);
+        if (action === 'restore') {
+          canvas.dispatchEvent(new Event('webglcontextrestored'));
+        } else {
+          compositor.dispose();
+        }
+        expect(timers.size).toBe(0);
+        deadline();
+        expect(failures).toEqual([]);
+      } finally {
+        compositor.dispose();
+        globalThis.setTimeout = originalSet;
+        globalThis.clearTimeout = originalClear;
+      }
+    },
+  );
 
   test('reports an unrecoverable resource failure after context restoration', () => {
     const gl = new FakeWebGLContext();
     const canvas = new FakeCanvas(gl);
     const failures: Error[] = [];
-    createDoomCompositor(asCanvas(canvas), { onFailure: (error) => failures.push(error) });
+    createDoomCompositor(asCanvas(canvas), {
+      onFailure: error => failures.push(error),
+    });
 
-    canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    canvas.dispatchEvent(new Event('webglcontextlost', {cancelable: true}));
     gl.failCompilation = true;
     canvas.dispatchEvent(new Event('webglcontextrestored'));
 

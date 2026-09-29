@@ -1,5 +1,76 @@
 ---
-style: "line-height: 1.2; padding-left: 2em"
+css: |
+  .egg-cups {
+    display: flex;
+    align-items: center;
+    gap: clamp(2px, 1vw, 10px);
+    margin: 1.25em 0;
+    max-width: 100%;
+    --egg-empty: url('egg-cup-empty.gif');
+    --egg-full: url('egg-cup-full.gif');
+  }
+
+  .egg-cup {
+    flex: 0 1 64px;
+    min-width: 24px;
+    padding: 4px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .egg-cup > span {
+    display: block;
+    width: 100%;
+    aspect-ratio: 5 / 8;
+    background: var(--egg-empty) center / contain no-repeat;
+  }
+
+  .egg-cup[aria-pressed='true'] > span {
+    background-image: var(--egg-full);
+  }
+
+  .egg-cup:hover,
+  .egg-cup:focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+  }
+
+  .egg-cups-equals,
+  .egg-cups output {
+    flex: 0 0 auto;
+    font-size: 1.5em;
+  }
+
+  .egg-cups output {
+    min-width: 2ch;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html[data-animations='off'] .egg-cups {
+    --egg-empty: url('egg-cup-empty.svg');
+    --egg-full: url('egg-cup-full.svg');
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .egg-cups {
+      --egg-empty: url('egg-cup-empty.svg');
+      --egg-full: url('egg-cup-full.svg');
+    }
+  }
+
+  table:has(img[src$='/egg-cup-empty.gif'], img[src$='/egg-cup-full.gif']) th,
+  table:has(img[src$='/egg-cup-empty.gif'], img[src$='/egg-cup-full.gif']) td {
+    border: 0;
+    text-align: center;
+  }
+  table:has(img[src$='/egg-cup-empty.gif'], img[src$='/egg-cup-full.gif']) img,
+  table:has(img[src$='/egg-cup-empty.gif'], img[src$='/egg-cup-full.gif']) .crt-image {
+    margin: 0 auto;
+  }
+style: "line-height: 1.2;"
 title: Computers are just egg cups
 date: 2026-09-23
 tags:

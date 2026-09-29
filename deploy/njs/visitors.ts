@@ -38,18 +38,23 @@ function visit(r: VisitorRequest) {
     if (
       !body ||
       typeof body.id !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.id)
-    )
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        body.id,
+      )
+    ) {
       throw new Error('Invalid ID');
+    }
     if (
       typeof body.path !== 'string' ||
       !body.path.startsWith('/') ||
       body.path.startsWith('//') ||
       body.path.length > 1024
-    )
+    ) {
       throw new Error('Invalid path');
-    if (typeof body.referrer !== 'string' || body.referrer.length > 1024)
+    }
+    if (typeof body.referrer !== 'string' || body.referrer.length > 1024) {
       throw new Error('Invalid referrer');
+    }
   } catch (error) {
     r.return(400);
     return;
@@ -59,7 +64,7 @@ function visit(r: VisitorRequest) {
     // No expiry or eviction: capacity exhaustion must not silently forget identities.
     const dictionary = ngx.shared.portfolio_visitors;
     dictionary.incr(body.id.toLowerCase(), 1, 0);
-    r.return(200, JSON.stringify({ visitors: dictionary.size() }));
+    r.return(200, JSON.stringify({visitors: dictionary.size()}));
   } catch (error) {
     r.error('Visitor dictionary unavailable or full');
     r.return(503);
@@ -69,11 +74,11 @@ function visit(r: VisitorRequest) {
 function snapshot(r: VisitorRequest) {
   const dictionary = ngx.shared.portfolio_visitors;
   const entries = dictionary.items(dictionary.size());
-  const state: Record<string, { value: number }> = {};
+  const state: Record<string, {value: number}> = {};
   for (let index = 0; index < entries.length; index++) {
     const entry = entries[index];
-    state[entry[0]] = { value: entry[1] };
+    state[entry[0]] = {value: entry[1]};
   }
   r.return(200, JSON.stringify(state));
 }
-export default { visit, snapshot };
+export default {visit, snapshot};

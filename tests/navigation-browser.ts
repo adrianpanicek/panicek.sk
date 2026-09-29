@@ -1,5 +1,5 @@
-import { chromium } from 'playwright';
-import { strict as assert } from 'node:assert';
+import {chromium} from 'playwright';
+import {strict as assert} from 'node:assert';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:4321';
 const browser = await chromium.launch({
@@ -13,37 +13,46 @@ try {
     [false, 390],
     [true, 390],
   ] as const) {
-    const context = await browser.newContext({ viewport: { width, height: 700 } });
-    await context.addInitScript((on) => {
-      localStorage.setItem('portfolio:config', JSON.stringify({ crt: on, bloom: false }));
+    const context = await browser.newContext({viewport: {width, height: 700}});
+    await context.addInitScript(on => {
+      localStorage.setItem(
+        'portfolio:config',
+        JSON.stringify({crt: on, bloom: false}),
+      );
     }, crt);
     const page = await context.newPage();
-    await page.route('**/filesystem.json', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    await page.route('**/filesystem.json', async route => {
+      await new Promise(resolve => setTimeout(resolve, 500));
       await route.continue();
     });
     await page.goto(base + '/blog/');
     assert.equal(await page.locator('#transcript').isVisible(), false);
     await page.waitForFunction(() => {
-      const value = document.querySelector<HTMLTextAreaElement>('#command')?.value;
+      const value =
+        document.querySelector<HTMLTextAreaElement>('#command')?.value;
       return value && value.length > 0;
     });
     assert.equal(await page.locator('#transcript article').count(), 0);
     const idle = () =>
       page.waitForFunction(
         () =>
-          document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
+          document.querySelector('#command-form')?.getAttribute('aria-busy') ===
+            'false' &&
           !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
       );
     await idle();
     assert.equal(await page.locator('#cwd').textContent(), '~/blog');
     assert.equal(
-      await page.evaluate(() => window.scrollY + document.querySelector('main')!.scrollTop),
+      await page.evaluate(
+        () => window.scrollY + document.querySelector('main')!.scrollTop,
+      ),
       0,
     );
     // Toggle explicitly so this test also exercises both scroll containers.
     const toggle = page.locator('#crt-toggle');
-    if ((await toggle.getAttribute('aria-pressed')) !== String(crt)) await toggle.click();
+    if ((await toggle.getAttribute('aria-pressed')) !== String(crt)) {
+      await toggle.click();
+    }
     const url = page.url();
     const timeOrigin = await page.evaluate(() => performance.timeOrigin);
     const post = page.locator('article h2 a[data-file$="/INDEX.md"]').first();
@@ -56,11 +65,13 @@ try {
     assert.equal(await post.getAttribute('href'), base + postPath);
     await post.click();
     const settledPositions = await page.evaluate(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 650));
+      await new Promise(resolve => setTimeout(resolve, 650));
       const samples: number[] = [];
       const deadline = performance.now() + 1800;
       while (performance.now() < deadline) {
-        samples.push(window.scrollY + document.querySelector('main')!.scrollTop);
+        samples.push(
+          window.scrollY + document.querySelector('main')!.scrollTop,
+        );
         await new Promise(requestAnimationFrame);
       }
       return samples;
@@ -90,10 +101,14 @@ try {
         entries[entries.length - 1]!.getBoundingClientRect().bottom
       );
     });
-    assert.ok(gap >= 0 && gap < 40, `next prompt should follow output, got gap ${gap}`);
+    assert.ok(
+      gap >= 0 && gap < 40,
+      `next prompt should follow output, got gap ${gap}`,
+    );
     const layout = await page.evaluate(() => ({
       footer: document.querySelector('footer')!.getBoundingClientRect().bottom,
-      prompt: document.querySelector('#command-form')!.getBoundingClientRect().bottom,
+      prompt: document.querySelector('#command-form')!.getBoundingClientRect()
+        .bottom,
       height: innerHeight,
     }));
     if (layout.prompt < layout.height - 120) {
@@ -105,8 +120,11 @@ try {
     const top = await page
       .locator('#transcript .entry')
       .last()
-      .evaluate((el) => el.getBoundingClientRect().top);
-    assert.ok(top >= -2 && top < 80, `command should stay at top, got ${top} (crt=${crt})`);
+      .evaluate(el => el.getBoundingClientRect().top);
+    assert.ok(
+      top >= -2 && top < 80,
+      `command should stay at top, got ${top} (crt=${crt})`,
+    );
     await page.goBack();
     assert.equal(page.url(), url);
     await page.goForward();
@@ -118,7 +136,11 @@ try {
       window.scrollTo(0, 0);
       document.querySelector('main')!.scrollTop = 0;
     });
-    assert.equal(await page.locator('#transcript article').count(), 2, 'scrollback retained');
+    assert.equal(
+      await page.locator('#transcript article').count(),
+      2,
+      'scrollback retained',
+    );
     await post.click();
     await page.waitForTimeout(100);
     await page.mouse.wheel(0, -10000);
@@ -161,20 +183,28 @@ try {
   await settings.goto(base + '/blog/');
   await settings.waitForFunction(
     () =>
-      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') ===
+        'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
   );
-  const animationToggle = settings.getByRole('button', { name: 'Animations', exact: true });
+  const animationToggle = settings.getByRole('button', {
+    name: 'Animations',
+    exact: true,
+  });
   await animationToggle.click();
   assert.equal(await animationToggle.getAttribute('aria-pressed'), 'false');
   await settings.reload();
   await settings.waitForFunction(
     () =>
-      document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false' &&
+      document.querySelector('#command-form')?.getAttribute('aria-busy') ===
+        'false' &&
       !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,
   );
   assert.equal(await animationToggle.getAttribute('aria-pressed'), 'false');
-  assert.equal(await settings.locator('html').getAttribute('data-animations'), 'off');
+  assert.equal(
+    await settings.locator('html').getAttribute('data-animations'),
+    'off',
+  );
   const post = settings.locator('article h2 a[data-file$="/INDEX.md"]').first();
   const source = await post.getAttribute('data-file');
   assert.ok(
@@ -185,24 +215,35 @@ try {
   const started = Date.now();
   await post.click();
   await settings.waitForFunction(
-    () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
+    () =>
+      document.querySelector('#command-form')?.getAttribute('aria-busy') ===
+      'false',
   );
-  assert.ok(Date.now() - started < 1200, 'disabled animations skip the typing delay');
+  assert.ok(
+    Date.now() - started < 1200,
+    'disabled animations skip the typing delay',
+  );
   assert.equal(new URL(settings.url()).pathname, postPath);
-  const shellInput = settings.getByRole('textbox', { name: 'Shell command' });
+  const shellInput = settings.getByRole('textbox', {name: 'Shell command'});
   await shellInput.fill('pwd');
   await shellInput.press('Enter');
   await settings.waitForFunction(
-    () => document.querySelector('#command-form')?.getAttribute('aria-busy') === 'false',
+    () =>
+      document.querySelector('#command-form')?.getAttribute('aria-busy') ===
+      'false',
   );
   assert.equal(
-    (await settings.locator('#transcript .entry').last().locator('.output').textContent())!.trim(),
+    (await settings
+      .locator('#transcript .entry')
+      .last()
+      .locator('.output')
+      .textContent())!.trim(),
     '/home/web/blog',
   );
   await animationToggle.click();
   assert.equal(await animationToggle.getAttribute('aria-pressed'), 'true');
   await settings.close();
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({javaScriptEnabled: false});
   for (const path of ['/blog/', postPath, '/home/web' + postPath]) {
     const page = await context.newPage();
     await page.goto(base + path);
@@ -212,9 +253,9 @@ try {
   }
   await context.close();
   const fallback = await browser.newPage();
-  await fallback.route('**/assets/shell.worker.js', (route) => route.abort());
+  await fallback.route('**/assets/shell.worker.js', route => route.abort());
   await fallback.goto(base + '/blog/');
-  await fallback.locator('#transcript article').waitFor({ state: 'visible' });
+  await fallback.locator('#transcript article').waitFor({state: 'visible'});
   assert.equal(await fallback.locator('#transcript article').count(), 1);
   console.log(
     'Animated startup, full links, history navigation, saved animations setting, top alignment, scrollback and static fallback passed',

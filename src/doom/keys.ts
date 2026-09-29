@@ -48,20 +48,35 @@ function createKeyMap(exports: DoomKeyExports): Map<string, number> {
   ]);
 }
 
-function translateKey(event: KeyboardEvent, keys: Map<string, number>): number | null {
+function translateKey(
+  event: KeyboardEvent,
+  keys: Map<string, number>,
+): number | null {
   const mapped = keys.get(event.code);
-  if (mapped !== undefined) return mapped;
-  if (event.key.length !== 1) return null;
+
+  if (mapped !== undefined) {
+    return mapped;
+  }
+
+  if (event.key.length !== 1) {
+    return null;
+  }
+
   const character = event.key.charCodeAt(0);
+
   return character <= 255 ? character : null;
 }
 
-export function attachDoomKeyboard(target: EventTarget, exports: DoomKeyExports): DoomKeyboard {
+export function attachDoomKeyboard(
+  target: EventTarget,
+  exports: DoomKeyExports,
+): DoomKeyboard {
   const keys = createKeyMap(exports);
   const held = new Map<string, number>();
   let disposed = false;
   const browserWindow = typeof window === 'undefined' ? undefined : window;
-  const browserDocument = typeof document === 'undefined' ? undefined : document;
+  const browserDocument =
+    typeof document === 'undefined' ? undefined : document;
 
   const consume = (event: Event) => {
     event.preventDefault();
@@ -71,13 +86,24 @@ export function attachDoomKeyboard(target: EventTarget, exports: DoomKeyExports)
   const keydown = (event: Event) => {
     const keyboardEvent = event as KeyboardEvent;
     const key = translateKey(keyboardEvent, keys);
-    if (key === null) return;
+
+    if (key === null) {
+      return;
+    }
+
     consume(event);
     const identity = keyboardEvent.code || keyboardEvent.key;
-    if (held.has(identity)) return;
+
+    if (held.has(identity)) {
+      return;
+    }
+
     const alreadyHeld = [...held.values()].includes(key);
     held.set(identity, key);
-    if (!alreadyHeld) exports.reportKeyDown(key);
+
+    if (!alreadyHeld) {
+      exports.reportKeyDown(key);
+    }
   };
 
   const keyup = (event: Event) => {
@@ -85,21 +111,37 @@ export function attachDoomKeyboard(target: EventTarget, exports: DoomKeyExports)
     const identity = keyboardEvent.code || keyboardEvent.key;
     const heldKey = held.get(identity);
     const key = heldKey ?? translateKey(keyboardEvent, keys);
-    if (key === null) return;
+
+    if (key === null) {
+      return;
+    }
+
     consume(event);
-    if (heldKey === undefined) return;
+
+    if (heldKey === undefined) {
+      return;
+    }
+
     held.delete(identity);
-    if (![...held.values()].includes(heldKey)) exports.reportKeyUp(heldKey);
+
+    if (![...held.values()].includes(heldKey)) {
+      exports.reportKeyUp(heldKey);
+    }
   };
 
   const release = () => {
     const keys = new Set(held.values());
     held.clear();
-    for (const key of keys) exports.reportKeyUp(key);
+
+    for (const key of keys) {
+      exports.reportKeyUp(key);
+    }
   };
 
   const visibilityChanged = () => {
-    if (browserDocument?.hidden) release();
+    if (browserDocument?.hidden) {
+      release();
+    }
   };
 
   browserWindow?.addEventListener('blur', release);
@@ -110,13 +152,19 @@ export function attachDoomKeyboard(target: EventTarget, exports: DoomKeyExports)
 
   return {
     dispose() {
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
+
       disposed = true;
       target.removeEventListener('keydown', keydown);
       target.removeEventListener('keyup', keyup);
       target.removeEventListener('blur', release);
       browserWindow?.removeEventListener('blur', release);
-      browserDocument?.removeEventListener('visibilitychange', visibilityChanged);
+      browserDocument?.removeEventListener(
+        'visibilitychange',
+        visibilityChanged,
+      );
       release();
     },
   };

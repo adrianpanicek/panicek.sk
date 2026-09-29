@@ -1,5 +1,5 @@
-import { assertDoomArtifact } from '../scripts/doom-artifact';
-import { expect, test } from 'bun:test';
+import {assertDoomArtifact} from '../scripts/doom-artifact';
+import {expect, test} from 'bun:test';
 
 const upstreamRevision = '31cc1af9656a8184830090c4e9f268383f5d7e15';
 
@@ -13,7 +13,7 @@ test('pinned Doom shareware artifact exposes the clean-exit lifecycle import', a
 
   const module = new WebAssembly.Module(bytes);
   const imports = WebAssembly.Module.imports(module)
-    .map(({ module: importModule, name }) => `${importModule}.${name}`)
+    .map(({module: importModule, name}) => `${importModule}.${name}`)
     .sort();
   expect(imports).toEqual([
     'console.onErrorMessage',
@@ -40,15 +40,19 @@ test('pinned Doom shareware artifact exposes the clean-exit lifecycle import', a
 test('vendored Doom quits through its real menu without trapping in exit callbacks', async () => {
   let time = 1000;
   const exits: number[] = [];
-  const { instance } = await WebAssembly.instantiate(
+  const {instance} = await WebAssembly.instantiate(
     await Bun.file('vendor/doom/doom.wasm').bytes(),
     {
-      loading: { onGameInit() {}, wadSizes() {}, readWads() {} },
-      ui: { drawFrame() {} },
-      runtimeControl: { timeInMilliseconds: () => BigInt(++time) },
-      console: { onInfoMessage() {}, onErrorMessage() {} },
-      gameSaving: { sizeOfSaveGame: () => 0, readSaveGame: () => 0, writeSaveGame: () => 0 },
-      lifecycle: { onExit: (code: number) => exits.push(code) },
+      loading: {onGameInit() {}, wadSizes() {}, readWads() {}},
+      ui: {drawFrame() {}},
+      runtimeControl: {timeInMilliseconds: () => BigInt(++time)},
+      console: {onInfoMessage() {}, onErrorMessage() {}},
+      gameSaving: {
+        sizeOfSaveGame: () => 0,
+        readSaveGame: () => 0,
+        writeSaveGame: () => 0,
+      },
+      lifecycle: {onExit: (code: number) => exits.push(code)},
     },
   );
   const game = instance.exports as unknown as {
@@ -79,7 +83,10 @@ test('vendored Doom quits through its real menu without trapping in exit callbac
   expect(exits).toEqual([0]);
 });
 
-function artifactWithExitType(parameters: number[], results: number[]): Uint8Array<ArrayBuffer> {
+function artifactWithExitType(
+  parameters: number[],
+  results: number[],
+): Uint8Array<ArrayBuffer> {
   const unsigned = (value: number): number[] => {
     const bytes = [];
     do {
@@ -89,7 +96,10 @@ function artifactWithExitType(parameters: number[], results: number[]): Uint8Arr
     } while (value);
     return bytes;
   };
-  const string = (value: string) => [value.length, ...new TextEncoder().encode(value)];
+  const string = (value: string) => [
+    value.length,
+    ...new TextEncoder().encode(value),
+  ];
   const names = [
     ['console', 'onErrorMessage'],
     ['console', 'onInfoMessage'],
@@ -103,10 +113,22 @@ function artifactWithExitType(parameters: number[], results: number[]): Uint8Arr
     ['runtimeControl', 'timeInMilliseconds'],
     ['ui', 'drawFrame'],
   ];
-  const types = [1, 0x60, parameters.length, ...parameters, results.length, ...results];
+  const types = [
+    1,
+    0x60,
+    parameters.length,
+    ...parameters,
+    results.length,
+    ...results,
+  ];
   const imports = [
     names.length,
-    ...names.flatMap(([module, name]) => [...string(module), ...string(name), 0, 0]),
+    ...names.flatMap(([module, name]) => [
+      ...string(module),
+      ...string(name),
+      0,
+      0,
+    ]),
   ];
   const prefix = [
     0,
@@ -141,10 +163,14 @@ test.each([
   (parameters, results) => {
     const bytes = artifactWithExitType(parameters, results);
     expect(WebAssembly.validate(bytes)).toBe(true);
-    expect(() => assertDoomArtifact(bytes)).toThrow('lifecycle.onExit must have type (i32) -> ()');
+    expect(() => assertDoomArtifact(bytes)).toThrow(
+      'lifecycle.onExit must have type (i32) -> ()',
+    );
   },
 );
 
 test('accepts the exact lifecycle i32 argument and no-result ABI', () => {
-  expect(() => assertDoomArtifact(artifactWithExitType([0x7f], []))).not.toThrow();
+  expect(() =>
+    assertDoomArtifact(artifactWithExitType([0x7f], [])),
+  ).not.toThrow();
 });

@@ -12,7 +12,12 @@ export type FourByThreeSize = {
 
 export type DoomCompositor = {
   resize(width: number, height: number): void;
-  draw(memory: WebAssembly.Memory, pointer: number, width: number, height: number): void;
+  draw(
+    memory: WebAssembly.Memory,
+    pointer: number,
+    width: number,
+    height: number,
+  ): void;
   dispose(): void;
 };
 
@@ -36,11 +41,22 @@ type Resources = {
 };
 
 export function fitFourByThree(width: number, height: number): FourByThreeSize {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    throw new RangeError('Doom compositor dimensions must be positive finite numbers');
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    throw new RangeError(
+      'Doom compositor dimensions must be positive finite numbers',
+    );
   }
-  if (width / height > 4 / 3) return { width: (height * 4) / 3, height };
-  return { width, height: (width * 3) / 4 };
+
+  if (width / height > 4 / 3) {
+    return {width: (height * 4) / 3, height};
+  }
+
+  return {width, height: (width * 3) / 4};
 }
 
 function webGLContext(canvas: HTMLCanvasElement): WebGLRenderingContext {
@@ -51,24 +67,41 @@ function webGLContext(canvas: HTMLCanvasElement): WebGLRenderingContext {
     stencil: false,
     preserveDrawingBuffer: false,
   });
-  if (!gl) throw new Error('WebGL is unavailable');
+
+  if (!gl) {
+    throw new Error('WebGL is unavailable');
+  }
+
   return gl;
 }
 
-function compileShader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader {
+function compileShader(
+  gl: WebGLRenderingContext,
+  type: number,
+  source: string,
+): WebGLShader {
   const shader = gl.createShader(type);
-  if (!shader) throw new Error('Unable to create a WebGL shader');
+
+  if (!shader) {
+    throw new Error('Unable to create a WebGL shader');
+  }
+
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
+
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     const message = gl.getShaderInfoLog(shader) || 'unknown compilation error';
     gl.deleteShader(shader);
     throw new Error(`Unable to compile Doom compositor shader: ${message}`);
   }
+
   return shader;
 }
 
-function deleteResources(gl: WebGLRenderingContext, resources: Resources): void {
+function deleteResources(
+  gl: WebGLRenderingContext,
+  resources: Resources,
+): void {
   gl.deleteTexture(resources.texture);
   gl.deleteBuffer(resources.buffer);
   gl.deleteProgram(resources.program);
@@ -85,12 +118,21 @@ function createResources(gl: WebGLRenderingContext): Resources {
 
   try {
     vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
-    fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
+    fragmentShader = compileShader(
+      gl,
+      gl.FRAGMENT_SHADER,
+      FRAGMENT_SHADER_SOURCE,
+    );
     program = gl.createProgram();
-    if (!program) throw new Error('Unable to create the Doom compositor program');
+
+    if (!program) {
+      throw new Error('Unable to create the Doom compositor program');
+    }
+
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
+
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       throw new Error(
         `Unable to link the Doom compositor program: ${gl.getProgramInfoLog(program) || 'unknown link error'}`,
@@ -103,12 +145,24 @@ function createResources(gl: WebGLRenderingContext): Resources {
     const curve = gl.getUniformLocation(program, 'u_curve');
     const screenSize = gl.getUniformLocation(program, 'u_screenSize');
     const effects = gl.getUniformLocation(program, 'u_effects');
-    if (position < 0 || !frame || !textureSize || !curve || !screenSize || !effects) {
+
+    if (
+      position < 0 ||
+      !frame ||
+      !textureSize ||
+      !curve ||
+      !screenSize ||
+      !effects
+    ) {
       throw new Error('Doom compositor shader inputs are unavailable');
     }
 
     buffer = gl.createBuffer();
-    if (!buffer) throw new Error('Unable to create the Doom compositor buffer');
+
+    if (!buffer) {
+      throw new Error('Unable to create the Doom compositor buffer');
+    }
+
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(
       gl.ARRAY_BUFFER,
@@ -117,7 +171,11 @@ function createResources(gl: WebGLRenderingContext): Resources {
     );
 
     texture = gl.createTexture();
-    if (!texture) throw new Error('Unable to create the Doom compositor texture');
+
+    if (!texture) {
+      throw new Error('Unable to create the Doom compositor texture');
+    }
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -146,11 +204,26 @@ function createResources(gl: WebGLRenderingContext): Resources {
       effects,
     };
   } catch (error) {
-    if (texture) gl.deleteTexture(texture);
-    if (buffer) gl.deleteBuffer(buffer);
-    if (program) gl.deleteProgram(program);
-    if (vertexShader) gl.deleteShader(vertexShader);
-    if (fragmentShader) gl.deleteShader(fragmentShader);
+    if (texture) {
+      gl.deleteTexture(texture);
+    }
+
+    if (buffer) {
+      gl.deleteBuffer(buffer);
+    }
+
+    if (program) {
+      gl.deleteProgram(program);
+    }
+
+    if (vertexShader) {
+      gl.deleteShader(vertexShader);
+    }
+
+    if (fragmentShader) {
+      gl.deleteShader(fragmentShader);
+    }
+
     throw error;
   }
 }
@@ -167,10 +240,21 @@ function applyGeometry(
   cssHeight: number,
 ): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
-  if (cssWidth === 0 || cssHeight === 0) return;
-  const curvePixels = Math.min(CRT_CURVE_LIMIT, Math.min(cssWidth, cssHeight) * CRT_CURVE_RATE);
+
+  if (cssWidth === 0 || cssHeight === 0) {
+    return;
+  }
+
+  const curvePixels = Math.min(
+    CRT_CURVE_LIMIT,
+    Math.min(cssWidth, cssHeight) * CRT_CURVE_RATE,
+  );
   gl.useProgram(resources.program);
-  gl.uniform2f(resources.curve, (2 * curvePixels) / cssWidth, (2 * curvePixels) / cssHeight);
+  gl.uniform2f(
+    resources.curve,
+    (2 * curvePixels) / cssWidth,
+    (2 * curvePixels) / cssHeight,
+  );
   gl.uniform2f(resources.screenSize, cssWidth, cssHeight);
 }
 
@@ -189,48 +273,76 @@ export function createDoomCompositor(
   let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
 
   const cancelRecovery = () => {
-    if (recoveryTimer !== null) clearTimeout(recoveryTimer);
+    if (recoveryTimer !== null) {
+      clearTimeout(recoveryTimer);
+    }
+
     recoveryTimer = null;
   };
 
   const stopPresentation = () => {
-    if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+    if (animationFrame !== null) {
+      cancelAnimationFrame(animationFrame);
+    }
+
     animationFrame = null;
   };
 
   const present = () => {
     animationFrame = null;
-    if (disposed || contextLost || failureReported || !resources) return;
+
+    if (disposed || contextLost || failureReported || !resources) {
+      return;
+    }
+
     const band = Math.ceil((cssHeight * 0.14) / 12) * 12;
     const end = Math.ceil(cssHeight / 12) * 12;
+
     const top = options.reducedMotion?.()
       ? -band
-      : -band + Math.floor(((performance.now() % 8000) / 8000) * ((band + end) / 12)) * 12;
+      : -band +
+        Math.floor(((performance.now() % 8000) / 8000) * ((band + end) / 12)) *
+          12;
+
     gl.useProgram(resources.program);
     gl.uniform2f(resources.effects, options.crt ? 1 : 0, top);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-    if (typeof requestAnimationFrame === 'function')
+
+    if (typeof requestAnimationFrame === 'function') {
       animationFrame = requestAnimationFrame(present);
+    }
   };
 
   const onContextLost = (event: Event) => {
     event.preventDefault();
-    if (disposed || failureReported || contextLost) return;
+
+    if (disposed || failureReported || contextLost) {
+      return;
+    }
+
     contextLost = true;
     stopPresentation();
     resources = null;
     recoveryTimer = setTimeout(() => {
       recoveryTimer = null;
-      if (disposed || failureReported || !contextLost) return;
+
+      if (disposed || failureReported || !contextLost) {
+        return;
+      }
+
       failureReported = true;
       options.onFailure?.(new Error('WebGL context could not be restored'));
     }, 5000);
   };
 
   const onContextRestored = () => {
-    if (disposed || failureReported) return;
+    if (disposed || failureReported) {
+      return;
+    }
+
     cancelRecovery();
+
     try {
       gl = webGLContext(canvas);
       resources = createResources(gl);
@@ -248,25 +360,39 @@ export function createDoomCompositor(
 
   return {
     resize(width, height) {
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
+
       const fitted = fitFourByThree(width, height);
       cssWidth = fitted.width;
       cssHeight = fitted.height;
+
       const ratio =
-        Number.isFinite(globalThis.devicePixelRatio) && globalThis.devicePixelRatio > 0
+        Number.isFinite(globalThis.devicePixelRatio) &&
+        globalThis.devicePixelRatio > 0
           ? globalThis.devicePixelRatio
           : 1;
+
       canvas.style.width = `${fitted.width}px`;
       canvas.style.height = `${fitted.height}px`;
       canvas.width = Math.max(1, Math.round(fitted.width * ratio));
       canvas.height = Math.max(1, Math.round(fitted.height * ratio));
-      if (!contextLost && resources) applyGeometry(gl, resources, canvas, cssWidth, cssHeight);
+
+      if (!contextLost && resources) {
+        applyGeometry(gl, resources, canvas, cssWidth, cssHeight);
+      }
     },
 
     draw(memory, pointer, width, height) {
       const current = resources;
-      if (disposed || contextLost || !current) return;
+
+      if (disposed || contextLost || !current) {
+        return;
+      }
+
       const byteLength = width * height * 4;
+
       if (
         !Number.isSafeInteger(pointer) ||
         pointer < 0 ||
@@ -288,18 +414,38 @@ export function createDoomCompositor(
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, current.texture);
       gl.uniform2f(current.textureSize, width, height);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-      if (animationFrame === null) present();
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        width,
+        height,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixels,
+      );
+
+      if (animationFrame === null) {
+        present();
+      }
     },
 
     dispose() {
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
+
       disposed = true;
       cancelRecovery();
       stopPresentation();
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
-      if (!contextLost && resources) deleteResources(gl, resources);
+
+      if (!contextLost && resources) {
+        deleteResources(gl, resources);
+      }
+
       resources = null;
     },
   };

@@ -31,7 +31,8 @@ Chromium executable; Firefox uses the Playwright installation. Start the preview
 running them; `TEST_URL` overrides the default local URL. Screenshots are saved in
 `.artifacts/`.
 
-Build output minifies JavaScript, HTML, and CSS compiled from `src/styles.scss`.
+Build output minifies JavaScript and CSS compiled from `src/styles.scss`.
+React generates HTML with hydration markers; gzip and Brotli compress the output.
 The page preloads the encoded virtual filesystem so contacts can render as soon
 as the shell is ready.
 
@@ -635,3 +636,47 @@ A document's hook runs at most once per render chain, with at most eight hooks
 and a shared five-second deadline before starting further commands. Each command
 also retains the shell's existing execution limit. Errors are shown without
 removing the original document. Interactive editors and applications are unsupported.
+
+## React rendering
+
+The site uses React DOM with Bun; deployment still consists of static files.
+`src/ui/document.tsx` generates the page and safely serializes its initial model.
+`src/client.ts` hydrates the shared `App`, then starts the terminal controller.
+`src/crt-client.tsx` hydrates the static SVG filter independently so CRT startup
+still works if the main client cannot load.
+
+- `src/ui/` owns page layout, transcript entries, highlighted input, display controls,
+  and React mounting slots for lazy applications.
+- `src/markdown/` renders Marked tokens as React elements. Images and egg cup
+  calculators are components shared by static generation and browser rendering.
+- `src/terminal/` owns typed view state, worker messages, command input, and shell
+  orchestration. The worker and filesystem stay independent of React.
+- Vim and DOOM expose React panels around CodeMirror and canvas/WebGL. Those
+  engines own their internal editing/drawing surfaces. Program-authored HTML
+  remains isolated in its existing sandboxed iframe.
+
+Article frontmatter accepts `css: |` for an article-local stylesheet in addition
+to the existing `style` declarations. For example:
+
+```yaml
+---
+style: 'line-height: 1.2'
+css: |
+  .egg-cups { gap: 8px; }
+  .egg-cup > span { background-image: url(egg-cup-empty.svg); }
+  @media (prefers-reduced-motion: reduce) {
+    .egg-cups { --egg-empty: url(egg-cup-empty.svg); }
+  }
+---
+```
+
+Selectors are scoped to the article, asset URLs resolve relative to its file,
+and `@media`/`@supports` rules are supported. Use flat selectors; nesting,
+imports, global at-rules, remote asset URLs, and malformed stylesheets are
+rejected without preventing the article body from rendering. The documented
+`html[data-animations='off']` ancestor condition supports the site's animation
+toggle. The egg cup article owns its calculator and table styles; the global
+stylesheet contains no egg cup-specific rules.
+
+See [source readability conventions](docs/code-style.md) for whitespace, naming,
+and refactoring guidance.

@@ -1,5 +1,5 @@
 ---
-style: "line-height: 1.2; padding-left: 2em"
+style: "line-height: 1.2;"
 title: ALU is not a metal
 date: 2026-09-28
 tags:
@@ -9,7 +9,7 @@ tags:
 
 # ALU is not a metal
 
-By now, we know how to fill our egg cups to represent numbers. And we found somewhere to put the minus. But what is a computer for if not for computing? Let's look at the basic operations and how a computer processes them.
+By now, we know how to fill our egg cups to represent numbers. And we [found somewhere to put the minus](../where-does-the-minus-go/INDEX.md). But what is a computer for if not for computing? Let's look at the basic operations and how a computer processes them.
 
 I'll teach you a new abbreviation. It's one of my favorites, and I'm ashamed to admit it's part of my core vocabulary, used almost daily. It stands for **arithmetic logic unit**, or **ALU**. Don't overthink it; it's just a part of the processor that actually performs operations on numbers. Give it two numbers (or more, because **SIMD** is also one of my favorites) and tell it which operation to perform.
 

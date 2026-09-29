@@ -1,13 +1,21 @@
-import { expect, test } from 'bun:test';
+import {expect, test} from 'bun:test';
 import 'fake-indexeddb/auto';
-import { createFilesystem, snapshot, overlayBetween, readRaw } from '../src/filesystem';
-import { loadState, commitState } from '../src/storage';
-import { createShell } from '../src/shell';
+import {
+  createFilesystem,
+  snapshot,
+  overlayBetween,
+  readRaw,
+} from '../src/filesystem';
+import {loadState, commitState} from '../src/storage';
+import {createShell} from '../src/shell';
 
-const base = { '/home/web/ABOUT.md': '# Original\n', '/home/web/CAREER.md': '# Career\n' };
+const base = {
+  '/home/web/ABOUT.md': '# Original\n',
+  '/home/web/CAREER.md': '# Career\n',
+};
 const launcher = '#!/usr/bin/env portfolio-app\ndoom\n';
 test('published applications are executable while restored permission changes win', async () => {
-  const published = { ...base, '/home/web/DOOM': launcher };
+  const published = {...base, '/home/web/DOOM': launcher};
   const fs = await createFilesystem(published);
   const before = await snapshot(fs);
   expect((await fs.stat('/home/web/DOOM')).mode & 0o777).toBe(0o755);
@@ -22,19 +30,31 @@ test('shell writes, deletion, binary files and symlinks survive overlay restore'
   const before = await snapshot(fs);
   const shell = createShell(fs);
   expect(
-    (await shell.exec('echo hello > /tmp/new.txt; rm ~/ABOUT.md; ln -s /tmp/new.txt ~/link.txt'))
-      .exitCode,
+    (
+      await shell.exec(
+        'echo hello > /tmp/new.txt; rm ~/ABOUT.md; ln -s /tmp/new.txt ~/link.txt',
+      )
+    ).exitCode,
   ).toBe(0);
   await fs.writeFile('/tmp/data.bin', new Uint8Array([0, 255, 128, 1]));
   const overlay = overlayBetween(before, await snapshot(fs));
-  const restored = await createFilesystem({ ...base, '/home/web/NEW.md': 'new release' }, overlay);
+  const restored = await createFilesystem(
+    {...base, '/home/web/NEW.md': 'new release'},
+    overlay,
+  );
   expect(await (await readRaw('/~/link.txt', restored)).text()).toBe('hello\n');
   expect((await readRaw('/~/ABOUT.md', restored)).status).toBe(404);
-  expect(await (await readRaw('/~/NEW.md', restored)).text()).toBe('new release');
-  expect(new Uint8Array(await (await readRaw('/tmp/data.bin', restored)).arrayBuffer())).toEqual(
-    new Uint8Array([0, 255, 128, 1]),
+  expect(await (await readRaw('/~/NEW.md', restored)).text()).toBe(
+    'new release',
   );
-  expect(await (await readRaw('/tmp/', restored)).text()).toContain('/tmp/new.txt');
+  expect(
+    new Uint8Array(
+      await (await readRaw('/tmp/data.bin', restored)).arrayBuffer(),
+    ),
+  ).toEqual(new Uint8Array([0, 255, 128, 1]));
+  expect(await (await readRaw('/tmp/', restored)).text()).toContain(
+    '/tmp/new.txt',
+  );
 });
 test('raw routes detect symlink cycles', async () => {
   const fs = await createFilesystem(base);
@@ -44,10 +64,12 @@ test('raw routes detect symlink cycles', async () => {
 });
 test('revision transactions reject stale writers and retain the newer data', async () => {
   const initial = await loadState();
-  const overlay = { '/tmp/a': { type: 'file' as const, data: 'aGk=', mode: 420 } };
+  const overlay = {'/tmp/a': {type: 'file' as const, data: 'aGk=', mode: 420}};
   const next = await commitState(initial.revision, overlay);
   expect(next.revision).toBe(initial.revision + 1);
-  await expect(commitState(initial.revision, {})).rejects.toThrow('another tab');
+  await expect(commitState(initial.revision, {})).rejects.toThrow(
+    'another tab',
+  );
   expect((await loadState()).overlay).toEqual(overlay);
 });
 test('shell preserves cwd and supports pipes', async () => {
@@ -85,25 +107,37 @@ test('common shell tools operate on the shared filesystem', async () => {
 test('only explicit render formats output, preserving source and UTF-8', async () => {
   const shell = createShell(await createFilesystem(base));
   expect((await shell.exec('cat ~/CAREER.md')).documents).toEqual([]);
-  expect((await shell.exec('cat ~/CAREER.md | render')).documents[0]?.path).toBe(
+  expect(
+    (await shell.exec('cat ~/CAREER.md | render')).documents[0]?.path,
+  ).toBe('/home/web/CAREER.md');
+  expect(
+    (await shell.exec("printf '# Héllo\\n' | render")).documents[0]?.text,
+  ).toBe('# Héllo\n');
+  expect(
+    (await shell.exec('cat ~/CAREER.md | render | head')).documents,
+  ).toEqual([]);
+  expect(
+    (await shell.exec('cat ~/CAREER.md | render > /tmp/plain')).documents,
+  ).toEqual([]);
+  expect((await shell.exec('render < ~/CAREER.md')).documents[0]?.path).toBe(
     '/home/web/CAREER.md',
   );
-  expect((await shell.exec("printf '# Héllo\\n' | render")).documents[0]?.text).toBe('# Héllo\n');
-  expect((await shell.exec('cat ~/CAREER.md | render | head')).documents).toEqual([]);
-  expect((await shell.exec('cat ~/CAREER.md | render > /tmp/plain')).documents).toEqual([]);
-  expect((await shell.exec('render < ~/CAREER.md')).documents[0]?.path).toBe('/home/web/CAREER.md');
   expect((await shell.exec('cat ~/CAREER.md | head')).documents).toEqual([]);
 });
 test('lightweight raw reader agrees with live shell for every persisted entry', async () => {
-  const { snapshotReader } = await import('../src/raw-files');
+  const {snapshotReader} = await import('../src/raw-files');
   const fs = await createFilesystem(base);
-  await fs.mkdir('/tmp/deep', { recursive: true });
+  await fs.mkdir('/tmp/deep', {recursive: true});
   await fs.writeFile('/tmp/deep/binary', new Uint8Array([0, 255, 1]));
   await fs.symlink('/tmp/deep', '/home/web/deep');
   await fs.symlink('/missing', '/tmp/broken');
   const saved = await snapshot(fs);
   const reader = snapshotReader(saved);
-  for (const path of [...fs.getAllPaths(), '/home/web/deep/binary', '/home/web/deep/../broken']) {
+  for (const path of [
+    ...fs.getAllPaths(),
+    '/home/web/deep/binary',
+    '/home/web/deep/../broken',
+  ]) {
     const live = await readRaw(path, fs);
     const stored = await readRaw(path, reader);
     expect(stored.status).toBe(live.status);
@@ -118,19 +152,19 @@ test('large output succeeds rather than merely echoing the command', async () =>
   expect(result.stdout).toEndWith('19999\n20000\n');
 });
 test('deleting a directory also hides new published descendants', async () => {
-  const original = { ...base, '/home/web/nested/old.md': 'old' };
+  const original = {...base, '/home/web/nested/old.md': 'old'};
   const fs = await createFilesystem(original);
   const before = await snapshot(fs);
-  await fs.rm('/home/web/nested', { recursive: true });
+  await fs.rm('/home/web/nested', {recursive: true});
   const overlay = overlayBetween(before, await snapshot(fs));
   const restored = await createFilesystem(
-    { ...original, '/home/web/nested/new.md': 'new' },
+    {...original, '/home/web/nested/new.md': 'new'},
     overlay,
   );
   expect(await restored.exists('/home/web/nested')).toBe(false);
 });
 test('a safely quoted cat command still renders Markdown links', async () => {
-  const { catCommand } = await import('../src/paths');
+  const {catCommand} = await import('../src/paths');
   const fs = await createFilesystem(base);
   const path = "/tmp/quote'$(touch bad).md";
   await fs.writeFile(path, '[About](/home/web/ABOUT.md)');
@@ -141,11 +175,16 @@ test('a safely quoted cat command still renders Markdown links', async () => {
   expect(await fs.exists('/home/web/bad')).toBe(false);
 });
 test('published binary files preserve bytes in the virtual filesystem', async () => {
-  const fs = await createFilesystem({ ...base, '/tmp/asset.bin': { base64: 'AP+A' } });
-  expect(await fs.readFileBuffer('/tmp/asset.bin')).toEqual(new Uint8Array([0, 255, 128]));
+  const fs = await createFilesystem({
+    ...base,
+    '/tmp/asset.bin': {base64: 'AP+A'},
+  });
+  expect(await fs.readFileBuffer('/tmp/asset.bin')).toEqual(
+    new Uint8Array([0, 255, 128]),
+  );
 });
 test('corrupt saved state is rejected and reset recovers it', async () => {
-  const { resetState } = await import('../src/storage');
+  const {resetState} = await import('../src/storage');
   await new Promise<void>((resolve, reject) => {
     const request = indexedDB.open('panicek-filesystem', 1);
     request.onsuccess = () => {
@@ -155,7 +194,7 @@ test('corrupt saved state is rejected and reset recovers it', async () => {
         {
           version: 1,
           revision: 2,
-          overlay: { '/bad': { type: 'file', data: '!invalid!', mode: 420 } },
+          overlay: {'/bad': {type: 'file', data: '!invalid!', mode: 420}},
         },
         'current',
       );

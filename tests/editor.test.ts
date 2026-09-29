@@ -1,12 +1,14 @@
-import { expect, test } from 'bun:test';
-import { createFilesystem } from '../src/filesystem';
-import { createShell } from '../src/shell';
-import { readEditorFile, saveEditorFile } from '../src/editor-files';
+import {expect, test} from 'bun:test';
+import {createFilesystem} from '../src/filesystem';
+import {createShell} from '../src/shell';
+import {readEditorFile, saveEditorFile} from '../src/editor-files';
 
 test('vim resolves shell paths and refuses interactive use in pipelines', async () => {
   const fs = await createFilesystem({});
   const shell = createShell(fs);
-  expect((await shell.exec('vim ~/hello.md')).editorPath).toBe('/home/web/hello.md');
+  expect((await shell.exec('vim ~/hello.md')).editorPath).toBe(
+    '/home/web/hello.md',
+  );
   await shell.exec('cd /tmp');
   expect((await shell.exec("vi 'file with spaces.md'")).editorPath).toBe(
     '/tmp/file with spaces.md',
@@ -20,7 +22,7 @@ test('vim resolves shell paths and refuses interactive use in pipelines', async 
 test('editor reads UTF-8 and new files, refusing directories and binary files', async () => {
   const fs = await createFilesystem({
     '/home/web/text': 'héllo\n',
-    '/tmp/binary': { base64: 'AP8=' },
+    '/tmp/binary': {base64: 'AP8='},
   });
   expect((await readEditorFile(fs, '/home/web/text')).text).toBe('héllo\n');
   expect((await readEditorFile(fs, '/tmp/new')).isNew).toBe(true);
@@ -29,13 +31,17 @@ test('editor reads UTF-8 and new files, refusing directories and binary files', 
 });
 
 test('failed editor persistence preserves both new and existing filesystem contents', async () => {
-  const fs = await createFilesystem({ '/tmp/existing': 'before' });
+  const fs = await createFilesystem({'/tmp/existing': 'before'});
   const fail = async () => {
     throw new Error('Another tab saved first');
   };
-  await expect(saveEditorFile(fs, '/tmp/existing', 'after', fail)).rejects.toThrow('Another tab');
+  await expect(
+    saveEditorFile(fs, '/tmp/existing', 'after', fail),
+  ).rejects.toThrow('Another tab');
   expect(await fs.readFile('/tmp/existing')).toBe('before');
-  await expect(saveEditorFile(fs, '/tmp/new', 'after', fail)).rejects.toThrow('Another tab');
+  await expect(saveEditorFile(fs, '/tmp/new', 'after', fail)).rejects.toThrow(
+    'Another tab',
+  );
   expect(await fs.exists('/tmp/new')).toBe(false);
   await saveEditorFile(fs, '/tmp/existing', 'saved', async () => {});
   expect(await fs.readFile('/tmp/existing')).toBe('saved');
@@ -58,10 +64,10 @@ test('editor refuses pseudo-files and symlinks to nonpersistent paths', async ()
   await fs.mkdir('/proc');
   await fs.writeFile('/proc/example', 'original');
   await fs.symlink('/proc/example', '/tmp/proc-link');
-  await expect(saveEditorFile(fs, '/tmp/proc-link', 'new', async () => {})).rejects.toThrow(
-    'Cannot persist',
-  );
-  await expect(saveEditorFile(fs, '/proc/new', 'new', async () => {})).rejects.toThrow(
-    'Cannot persist',
-  );
+  await expect(
+    saveEditorFile(fs, '/tmp/proc-link', 'new', async () => {}),
+  ).rejects.toThrow('Cannot persist');
+  await expect(
+    saveEditorFile(fs, '/proc/new', 'new', async () => {}),
+  ).rejects.toThrow('Cannot persist');
 });

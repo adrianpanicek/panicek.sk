@@ -1,9 +1,12 @@
-import { describe, expect, test } from 'bun:test';
-import { attachDoomKeyboard } from '../src/doom/keys';
-import { startDoom, type DoomSession } from '../src/doom/runtime';
+import {describe, expect, test} from 'bun:test';
+import {attachDoomKeyboard} from '../src/doom/keys';
+import {startDoom, type DoomSession} from '../src/doom/runtime';
 
 class FakeCanvas extends EventTarget {
-  readonly listeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
+  readonly listeners = new Map<
+    string,
+    Set<EventListenerOrEventListenerObject>
+  >();
 
   override addEventListener(
     type: string,
@@ -24,11 +27,16 @@ class FakeCanvas extends EventTarget {
     options?: EventListenerOptions | boolean,
   ): void {
     super.removeEventListener(type, callback, options);
-    if (callback) this.listeners.get(type)?.delete(callback);
+    if (callback) {
+      this.listeners.get(type)?.delete(callback);
+    }
   }
 
   listenerCount(): number {
-    return [...this.listeners.values()].reduce((total, listeners) => total + listeners.size, 0);
+    return [...this.listeners.values()].reduce(
+      (total, listeners) => total + listeners.size,
+      0,
+    );
   }
 }
 
@@ -53,11 +61,11 @@ function keyboardEvent(
   type: string,
   key: string,
   code = '',
-): Event & { key: string; code: string } {
-  const event = new Event(type, { cancelable: true });
-  Object.defineProperty(event, 'key', { value: key });
-  Object.defineProperty(event, 'code', { value: code });
-  return event as Event & { key: string; code: string };
+): Event & {key: string; code: string} {
+  const event = new Event(type, {cancelable: true});
+  Object.defineProperty(event, 'key', {value: key});
+  Object.defineProperty(event, 'code', {value: code});
+  return event as Event & {key: string; code: string};
 }
 
 function encodeUnsigned(value: number): number[] {
@@ -65,7 +73,9 @@ function encodeUnsigned(value: number): number[] {
   do {
     let byte = value & 0x7f;
     value >>>= 7;
-    if (value) byte |= 0x80;
+    if (value) {
+      byte |= 0x80;
+    }
     bytes.push(byte);
   } while (value);
   return bytes;
@@ -79,7 +89,9 @@ function encodeSigned(value: number): number[] {
     value >>= 7;
     const sign = (byte & 0x40) !== 0;
     done = (value === 0 && !sign) || (value === -1 && sign);
-    if (!done) byte |= 0x80;
+    if (!done) {
+      byte |= 0x80;
+    }
     bytes.push(byte);
   }
   return bytes;
@@ -106,9 +118,19 @@ function doomFixture(exitOnTick = true): Uint8Array {
     [0x60, 2, 0x7f, 0x7f, 0],
   ]);
   const imports = vector([
-    [...wasmString('lifecycle'), ...wasmString('onExit'), 0, ...encodeUnsigned(1)],
+    [
+      ...wasmString('lifecycle'),
+      ...wasmString('onExit'),
+      0,
+      ...encodeUnsigned(1),
+    ],
     [...wasmString('ui'), ...wasmString('drawFrame'), 0, ...encodeUnsigned(1)],
-    [...wasmString('loading'), ...wasmString('onGameInit'), 0, ...encodeUnsigned(2)],
+    [
+      ...wasmString('loading'),
+      ...wasmString('onGameInit'),
+      0,
+      ...encodeUnsigned(2),
+    ],
   ]);
   const functions = vector([[0], [0], [1], [1]]);
   const memory = vector([[0, ...encodeUnsigned(1)]]);
@@ -121,14 +143,27 @@ function doomFixture(exitOnTick = true): Uint8Array {
     [...wasmString('tickGame'), 0, 4],
     [...wasmString('reportKeyDown'), 0, 5],
     [...wasmString('reportKeyUp'), 0, 6],
-    ...constants.map(([name], index) => [...wasmString(name), 3, ...encodeUnsigned(index)]),
+    ...constants.map(([name], index) => [
+      ...wasmString(name),
+      3,
+      ...encodeUnsigned(index),
+    ]),
   ]);
-  const initBody = [0, 0x41, ...encodeSigned(320), 0x41, ...encodeSigned(200), 0x10, 2, 0x0b];
+  const initBody = [
+    0,
+    0x41,
+    ...encodeSigned(320),
+    0x41,
+    ...encodeSigned(200),
+    0x10,
+    2,
+    0x0b,
+  ];
   const tickBody = exitOnTick
     ? [0, 0x41, 0, 0x10, 0, 0x41, 0, 0x10, 1, 0x0b]
     : [0, 0x41, 0, 0x10, 1, 0x0b];
   const codes = vector(
-    [initBody, tickBody, [0, 0x0b], [0, 0x0b]].map((body) => [
+    [initBody, tickBody, [0, 0x0b], [0, 0x0b]].map(body => [
       ...encodeUnsigned(body.length),
       ...body,
     ]),
@@ -153,21 +188,29 @@ function doomFixture(exitOnTick = true): Uint8Array {
   ]);
 }
 
-function response(bytes: Uint8Array, contentLength = bytes.byteLength): Response {
+function response(
+  bytes: Uint8Array,
+  contentLength = bytes.byteLength,
+): Response {
   return new Response(bytes as Uint8Array<ArrayBuffer>, {
-    headers: { 'Content-Length': String(contentLength) },
+    headers: {'Content-Length': String(contentLength)},
   });
 }
 
-function streamedResponse(chunks: Uint8Array[], contentLength: number): Response {
+function streamedResponse(
+  chunks: Uint8Array[],
+  contentLength: number,
+): Response {
   return new Response(
     new ReadableStream({
       start(controller) {
-        for (const chunk of chunks) controller.enqueue(chunk);
+        for (const chunk of chunks) {
+          controller.enqueue(chunk);
+        }
         controller.close();
       },
     }),
-    { headers: { 'Content-Length': String(contentLength) } },
+    {headers: {'Content-Length': String(contentLength)}},
   );
 }
 
@@ -178,11 +221,13 @@ function deferred<T>() {
     resolve = resolvePromise;
     reject = rejectPromise;
   });
-  return { promise, resolve, reject };
+  return {promise, resolve, reject};
 }
 
-function waitForExit(start: (finish: (code: number) => void) => void): Promise<number> {
-  return new Promise((resolve) => start(resolve));
+function waitForExit(
+  start: (finish: (code: number) => void) => void,
+): Promise<number> {
+  return new Promise(resolve => start(resolve));
 }
 
 function asCanvas(canvas: FakeCanvas): HTMLCanvasElement {
@@ -196,8 +241,8 @@ describe('Doom keyboard', () => {
     const up: number[] = [];
     const keyboard = attachDoomKeyboard(canvas, {
       ...keyExports,
-      reportKeyDown: (key) => down.push(key),
-      reportKeyUp: (key) => up.push(key),
+      reportKeyDown: key => down.push(key),
+      reportKeyUp: key => up.push(key),
     });
 
     const expected = [
@@ -243,8 +288,8 @@ describe('Doom keyboard', () => {
     const up: number[] = [];
     const keyboard = attachDoomKeyboard(canvas, {
       ...keyExports,
-      reportKeyDown: (key) => down.push(key),
-      reportKeyUp: (key) => up.push(key),
+      reportKeyDown: key => down.push(key),
+      reportKeyUp: key => up.push(key),
     });
 
     canvas.dispatchEvent(keyboardEvent('keydown', '<', 'Comma'));
@@ -258,18 +303,30 @@ describe('Doom keyboard', () => {
   });
 
   test('releases held keys on window blur and hidden documents and removes every listener', () => {
-    const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
-    const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+    const previousWindow = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'window',
+    );
+    const previousDocument = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'document',
+    );
     const windowTarget = new FakeCanvas();
-    const documentTarget = Object.assign(new FakeCanvas(), { hidden: false });
-    Object.defineProperty(globalThis, 'window', { configurable: true, value: windowTarget });
-    Object.defineProperty(globalThis, 'document', { configurable: true, value: documentTarget });
+    const documentTarget = Object.assign(new FakeCanvas(), {hidden: false});
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: windowTarget,
+    });
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: documentTarget,
+    });
     const canvas = new FakeCanvas();
     const released: number[] = [];
     const keyboard = attachDoomKeyboard(canvas, {
       ...keyExports,
       reportKeyDown: () => {},
-      reportKeyUp: (key) => released.push(key),
+      reportKeyUp: key => released.push(key),
     });
     try {
       canvas.dispatchEvent(keyboardEvent('keydown', 'ArrowLeft', 'ArrowLeft'));
@@ -291,10 +348,16 @@ describe('Doom keyboard', () => {
       expect(documentTarget.listenerCount()).toBe(0);
     } finally {
       keyboard.dispose();
-      if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
-      else Reflect.deleteProperty(globalThis, 'window');
-      if (previousDocument) Object.defineProperty(globalThis, 'document', previousDocument);
-      else Reflect.deleteProperty(globalThis, 'document');
+      if (previousWindow) {
+        Object.defineProperty(globalThis, 'window', previousWindow);
+      } else {
+        Reflect.deleteProperty(globalThis, 'window');
+      }
+      if (previousDocument) {
+        Object.defineProperty(globalThis, 'document', previousDocument);
+      } else {
+        Reflect.deleteProperty(globalThis, 'document');
+      }
     }
   });
 
@@ -304,7 +367,7 @@ describe('Doom keyboard', () => {
     const keyboard = attachDoomKeyboard(canvas, {
       ...keyExports,
       reportKeyDown: () => {},
-      reportKeyUp: (key) => released.push(key),
+      reportKeyUp: key => released.push(key),
     });
 
     canvas.dispatchEvent(keyboardEvent('keydown', 'ArrowLeft', 'ArrowLeft'));
@@ -321,7 +384,7 @@ describe('Doom keyboard', () => {
 
 describe.serial('Doom runtime', () => {
   test('reports each streamed chunk against the response content length', async () => {
-    const progress: Array<{ received: number; total: number | null }> = [];
+    const progress: Array<{received: number; total: number | null}> = [];
     const bytes = [
       new Uint8Array([0, 0x61, 0x73]),
       new Uint8Array([0x6d, 1, 0]),
@@ -332,34 +395,37 @@ describe.serial('Doom runtime', () => {
       startDoom({
         canvas: asCanvas(new FakeCanvas()),
         fetch: async () => streamedResponse(bytes, 9),
-        onProgress: (value) => progress.push(value),
+        onProgress: value => progress.push(value),
         onFrame: () => {},
         onExit: () => {},
       }),
     ).rejects.toBeInstanceOf(WebAssembly.CompileError);
     expect(progress).toEqual([
-      { received: 3, total: 9 },
-      { received: 6, total: 9 },
-      { received: 9, total: 9 },
+      {received: 3, total: 9},
+      {received: 6, total: 9},
+      {received: 9, total: 9},
     ]);
   });
 
   test('reports decoded download bytes without using a compressed Content-Length as the total', async () => {
-    const progress: Array<{ received: number; total: number | null }> = [];
+    const progress: Array<{received: number; total: number | null}> = [];
     const bytes = doomFixture(false);
-    const encoded = streamedResponse([bytes.slice(0, 100), bytes.slice(100)], 80);
+    const encoded = streamedResponse(
+      [bytes.slice(0, 100), bytes.slice(100)],
+      80,
+    );
     encoded.headers.set('Content-Encoding', 'br');
     const session = await startDoom({
       canvas: asCanvas(new FakeCanvas()),
       fetch: async () => encoded,
-      onProgress: (value) => progress.push(value),
+      onProgress: value => progress.push(value),
       onFrame: () => {},
       onExit: () => {},
     });
     try {
       expect(progress).toEqual([
-        { received: 100, total: null },
-        { received: bytes.byteLength, total: null },
+        {received: 100, total: null},
+        {received: bytes.byteLength, total: null},
       ]);
     } finally {
       session.dispose();
@@ -369,7 +435,7 @@ describe.serial('Doom runtime', () => {
   test('queues lifecycle cleanup until the active WebAssembly tick returns', async () => {
     const canvas = new FakeCanvas();
     const events: string[] = [];
-    const exit = waitForExit((finish) => {
+    const exit = waitForExit(finish => {
       void startDoom({
         canvas: asCanvas(canvas),
         fetch: async () => response(doomFixture()),
@@ -379,7 +445,7 @@ describe.serial('Doom runtime', () => {
           expect([pointer, width, height]).toEqual([0, 320, 200]);
           events.push('frame');
         },
-        onExit: (code) => {
+        onExit: code => {
           events.push('exit');
           finish(code);
         },
@@ -409,7 +475,7 @@ describe.serial('Doom runtime', () => {
         events.push(`listeners:${canvas.listenerCount()}`);
         events.push('frame:end');
       },
-      onExit: (code) => {
+      onExit: code => {
         events.push('exit');
         exited.resolve(code);
       },
@@ -430,10 +496,16 @@ describe.serial('Doom runtime', () => {
     };
 
     await expect(
-      startDoom({ ...options, fetch: async () => Promise.reject(new Error('offline')) }),
+      startDoom({
+        ...options,
+        fetch: async () => Promise.reject(new Error('offline')),
+      }),
     ).rejects.toThrow('offline');
     await expect(
-      startDoom({ ...options, fetch: async () => response(new Uint8Array([1, 2, 3])) }),
+      startDoom({
+        ...options,
+        fetch: async () => response(new Uint8Array([1, 2, 3])),
+      }),
     ).rejects.toBeInstanceOf(WebAssembly.CompileError);
 
     const session = await startDoom({
@@ -470,7 +542,8 @@ describe.serial('Doom runtime', () => {
       onFrame: () => {},
       onExit: (code: number) => exits.push(code),
     };
-    const simulateUnrecoverableContextLoss = (session: DoomSession) => session.dispose();
+    const simulateUnrecoverableContextLoss = (session: DoomSession) =>
+      session.dispose();
 
     const first = await startDoom(options);
     simulateUnrecoverableContextLoss(first);

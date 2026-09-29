@@ -26,7 +26,10 @@ export function programFixture(): Uint8Array {
     ...section(3, [1, 1]),
     ...section(5, [1, 0, 1]),
     ...section(7, [2, ...str('memory'), 2, 0, ...str('main'), 0, 2]),
-    ...section(10, [1, 13, 0, 0x41, 1, 0x41, 0, 0x41, 9, 0x10, 0, 0x1a, 0x10, 1, 0x0b]),
+    ...section(
+      10,
+      [1, 13, 0, 0x41, 1, 0x41, 0, 0x41, 9, 0x10, 0, 0x1a, 0x10, 1, 0x0b],
+    ),
     ...section(11, [1, 0, 0x41, 0, 0x0b, ...str('wasm says')]),
   ]);
 }

@@ -1,12 +1,16 @@
-import { resolve, extname, sep } from 'node:path';
-import { realpath, stat, readdir } from 'node:fs/promises';
+import {resolve, extname, sep} from 'node:path';
+import {realpath, stat, readdir} from 'node:fs/promises';
 
 export function safeRequestPath(url: string): string {
   // Inspect the raw spelling as well: URL parsers normalize literal dot segments.
   const raw = url.replace(/^https?:\/\/[^/]+/, '').split(/[?#]/)[0];
-  if (/%(?:2e|2f|5c|25|00)/i.test(raw) || /[\\\x00-\x1f]/.test(raw)) throw new Error('Bad path');
+  if (/%(?:2e|2f|5c|25|00)/i.test(raw) || /[\\\x00-\x1f]/.test(raw)) {
+    throw new Error('Bad path');
+  }
   const path = decodeURIComponent(raw);
-  if (path.split('/').some((part) => part === '.' || part === '..')) throw new Error('Bad path');
+  if (path.split('/').some(part => part === '.' || part === '..')) {
+    throw new Error('Bad path');
+  }
   return path;
 }
 export function staticHandler(directory: string) {
@@ -14,58 +18,78 @@ export function staticHandler(directory: string) {
   return async (request: Request): Promise<Response> => {
     try {
       const decoded = safeRequestPath(request.url);
-      const path = resolve(root, '.' + (decoded === '/' ? '/index.html' : decoded));
-      if (!path.startsWith(root + sep)) return new Response(null, { status: 404 });
+      const path = resolve(
+        root,
+        '.' + (decoded === '/' ? '/index.html' : decoded),
+      );
+      if (!path.startsWith(root + sep)) {
+        return new Response(null, {status: 404});
+      }
       const physical = await realpath(path);
       const physicalRoot = await realpath(root);
-      if (!physical.startsWith(physicalRoot + sep)) return new Response(null, { status: 404 });
+      if (!physical.startsWith(physicalRoot + sep)) {
+        return new Response(null, {status: 404});
+      }
       const remote = decoded.startsWith('/_files/');
       if (
         remote &&
         (physical !== physicalRoot + decoded.replace(/\/$/, '') ||
           !decoded.startsWith('/_files/home/web/'))
-      )
-        return new Response(null, { status: 404 });
+      ) {
+        return new Response(null, {status: 404});
+      }
       const info = await stat(physical);
       if (info.isDirectory()) {
-        if (!decoded.endsWith('/'))
+        if (!decoded.endsWith('/')) {
           return new Response(null, {
             status: 301,
-            headers: { Location: new URL(request.url).pathname + '/' },
+            headers: {Location: new URL(request.url).pathname + '/'},
           });
+        }
         if (remote) {
-          const entries = await readdir(physical, { withFileTypes: true });
+          const entries = await readdir(physical, {withFileTypes: true});
           return Response.json(
             await Promise.all(
               entries
-                .filter((entry) => !entry.name.startsWith('.') && !entry.isSymbolicLink())
-                .map(async (entry) => ({
+                .filter(
+                  entry =>
+                    !entry.name.startsWith('.') && !entry.isSymbolicLink(),
+                )
+                .map(async entry => ({
                   name: entry.name,
                   type: entry.isDirectory() ? 'directory' : 'file',
-                  mtime: (await stat(resolve(physical, entry.name))).mtime.toISOString(),
+                  mtime: (
+                    await stat(resolve(physical, entry.name))
+                  ).mtime.toISOString(),
                   ...(entry.isFile()
-                    ? { size: (await stat(resolve(physical, entry.name))).size }
+                    ? {size: (await stat(resolve(physical, entry.name))).size}
                     : {}),
                 })),
             ),
-            { headers: { 'Cache-Control': 'no-cache' } },
+            {headers: {'Cache-Control': 'no-cache'}},
           );
         }
         const index = Bun.file(resolve(physical, 'index.html'));
         return new Response(
-          (await index.exists()) ? index : Bun.file(resolve(root, 'assets/directory.html')),
+          (await index.exists())
+            ? index
+            : Bun.file(resolve(root, 'assets/directory.html')),
           {
-            headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'no-cache',
+            },
           },
         );
       }
       const file = Bun.file(physical);
       const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`;
-      if (request.headers.get('If-None-Match') === etag)
+      if (request.headers.get('If-None-Match') === etag) {
         return new Response(null, {
           status: 304,
-          headers: { ETag: etag, 'Cache-Control': 'no-cache' },
+          headers: {ETag: etag, 'Cache-Control': 'no-cache'},
         });
+      }
       const types: Record<string, string> = {
         '.md': 'text/plain; charset=utf-8',
         '.txt': 'text/plain; charset=utf-8',
@@ -77,14 +101,15 @@ export function staticHandler(directory: string) {
       };
       return new Response(request.method === 'HEAD' ? null : file, {
         headers: {
-          'Content-Type': types[extname(physical)] || file.type || 'application/octet-stream',
+          'Content-Type':
+            types[extname(physical)] || file.type || 'application/octet-stream',
           'X-Content-Type-Options': 'nosniff',
           'Cache-Control': 'no-cache',
           ETag: etag,
         },
       });
     } catch {
-      return new Response('File not found\n', { status: 404 });
+      return new Response('File not found\n', {status: 404});
     }
   };
 }

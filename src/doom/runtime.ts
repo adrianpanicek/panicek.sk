@@ -1,4 +1,8 @@
-import { attachDoomKeyboard, type DoomKeyExports, type DoomKeyboard } from './keys';
+import {
+  attachDoomKeyboard,
+  type DoomKeyExports,
+  type DoomKeyboard,
+} from './keys';
 
 export type DoomProgress = {
   received: number;
@@ -14,7 +18,12 @@ export type DoomRuntimeOptions = {
   wasmUrl?: string;
   fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   onProgress(progress: DoomProgress): void;
-  onFrame(memory: WebAssembly.Memory, pointer: number, width: number, height: number): void;
+  onFrame(
+    memory: WebAssembly.Memory,
+    pointer: number,
+    width: number,
+    height: number,
+  ): void;
   onExit(exitCode: number): void;
 };
 
@@ -31,34 +40,48 @@ async function responseBytes(
   onProgress: (progress: DoomProgress) => void,
 ): Promise<Uint8Array<ArrayBuffer>> {
   if (!response.ok) {
-    throw new Error(`Unable to load Doom: ${response.status} ${response.statusText}`.trim());
+    throw new Error(
+      `Unable to load Doom: ${response.status} ${response.statusText}`.trim(),
+    );
   }
 
   const encoding = response.headers.get('Content-Encoding');
+
   const lengthHeader =
     !encoding || encoding.trim().toLowerCase() === 'identity'
       ? response.headers.get('Content-Length')
       : null;
-  const parsedLength = lengthHeader === null ? Number.NaN : Number(lengthHeader);
-  const total = Number.isSafeInteger(parsedLength) && parsedLength >= 0 ? parsedLength : null;
+
+  const parsedLength =
+    lengthHeader === null ? Number.NaN : Number(lengthHeader);
+  const total =
+    Number.isSafeInteger(parsedLength) && parsedLength >= 0
+      ? parsedLength
+      : null;
 
   if (!response.body) {
     const bytes = new Uint8Array(await response.arrayBuffer());
-    onProgress({ received: bytes.byteLength, total });
+    onProgress({received: bytes.byteLength, total});
+
     return bytes;
   }
 
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let received = 0;
+
   try {
     while (true) {
       const result = await reader.read();
-      if (result.done) break;
+
+      if (result.done) {
+        break;
+      }
+
       const chunk = new Uint8Array(result.value);
       chunks.push(chunk);
       received += chunk.byteLength;
-      onProgress({ received, total });
+      onProgress({received, total});
     }
   } finally {
     reader.releaseLock();
@@ -66,22 +89,38 @@ async function responseBytes(
 
   const bytes = new Uint8Array(received);
   let offset = 0;
+
   for (const chunk of chunks) {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+
   return bytes;
 }
 
-function functionExport(exports: WebAssembly.Exports, name: string): (...args: number[]) => void {
+function functionExport(
+  exports: WebAssembly.Exports,
+  name: string,
+): (...args: number[]) => void {
   const value = exports[name];
-  if (typeof value !== 'function') throw new TypeError(`Doom export ${name} is missing`);
+
+  if (typeof value !== 'function') {
+    throw new TypeError(`Doom export ${name} is missing`);
+  }
+
   return value as (...args: number[]) => void;
 }
 
-function globalExport(exports: WebAssembly.Exports, name: string): WebAssembly.Global {
+function globalExport(
+  exports: WebAssembly.Exports,
+  name: string,
+): WebAssembly.Global {
   const value = exports[name];
-  if (!(value instanceof WebAssembly.Global)) throw new TypeError(`Doom export ${name} is missing`);
+
+  if (!(value instanceof WebAssembly.Global)) {
+    throw new TypeError(`Doom export ${name} is missing`);
+  }
+
   return value;
 }
 
@@ -113,8 +152,13 @@ function doomExports(exports: WebAssembly.Exports): DoomExports {
   };
 }
 
-export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSession> {
-  if (active) throw new Error('Doom is already starting or running');
+export async function startDoom(
+  options: DoomRuntimeOptions,
+): Promise<DoomSession> {
+  if (active) {
+    throw new Error('Doom is already starting or running');
+  }
+
   active = true;
 
   let exports: DoomExports | null = null;
@@ -126,47 +170,62 @@ export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSessio
   let exitPending: number | null = null;
   let insideWebAssembly = false;
   let finished = false;
-  const decoder = new TextDecoder('utf-8', { fatal: false });
+  const decoder = new TextDecoder('utf-8', {fatal: false});
 
   const clearRuntime = () => {
     if (timer !== null) {
       clearTimeout(timer);
       timer = null;
     }
+
     if (keyboard) {
       try {
         keyboard.dispose();
       } catch (error) {
         console.error(error);
       }
+
       keyboard = null;
     }
+
     memory = null;
     exports = null;
     active = false;
   };
 
   const finish = (exitCode: number) => {
-    if (finished) return;
+    if (finished) {
+      return;
+    }
+
     finished = true;
     clearRuntime();
     options.onExit(exitCode);
   };
 
   const finishPendingExit = () => {
-    if (exitPending === null || insideWebAssembly) return;
+    if (exitPending === null || insideWebAssembly) {
+      return;
+    }
+
     const exitCode = exitPending;
     exitPending = null;
     finish(exitCode);
   };
 
   const requestExit = (exitCode: number) => {
-    if (exitPending === null) exitPending = exitCode;
-    if (!insideWebAssembly) finishPendingExit();
+    if (exitPending === null) {
+      exitPending = exitCode;
+    }
+
+    if (!insideWebAssembly) {
+      finishPendingExit();
+    }
   };
 
   const invoke = (callback: () => void) => {
     insideWebAssembly = true;
+
     try {
       callback();
     } finally {
@@ -176,7 +235,10 @@ export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSessio
   };
 
   const readMessage = (pointer: number, length: number): string => {
-    if (!memory) return '';
+    if (!memory) {
+      return '';
+    }
+
     return decoder.decode(new Uint8Array(memory.buffer, pointer, length));
   };
 
@@ -186,12 +248,16 @@ export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSessio
         frameWidth = width;
         frameHeight = height;
       },
+
       wadSizes() {},
+
       readWads() {},
     },
     ui: {
       drawFrame(pointer: number) {
-        if (memory) options.onFrame(memory, pointer, frameWidth, frameHeight);
+        if (memory) {
+          options.onFrame(memory, pointer, frameWidth, frameHeight);
+        }
       },
     },
     runtimeControl: {
@@ -203,6 +269,7 @@ export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSessio
       onInfoMessage(pointer: number, length: number) {
         console.info(readMessage(pointer, length));
       },
+
       onErrorMessage(pointer: number, length: number) {
         console.error(readMessage(pointer, length));
       },
@@ -211,9 +278,11 @@ export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSessio
       sizeOfSaveGame() {
         return 0;
       },
+
       readSaveGame() {
         return 0;
       },
+
       writeSaveGame() {
         return 0;
       },
@@ -225,7 +294,9 @@ export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSessio
 
   try {
     const fetchWasm = options.fetch ?? globalThis.fetch.bind(globalThis);
-    const response = await fetchWasm(options.wasmUrl ?? '/assets/doom/doom.wasm');
+    const response = await fetchWasm(
+      options.wasmUrl ?? '/assets/doom/doom.wasm',
+    );
     const bytes = await responseBytes(response, options.onProgress);
     const instantiated = await WebAssembly.instantiate(bytes, imports);
     exports = doomExports(instantiated.instance.exports);
@@ -233,27 +304,42 @@ export async function startDoom(options: DoomRuntimeOptions): Promise<DoomSessio
     keyboard = attachDoomKeyboard(options.canvas, exports);
 
     invoke(exports.initGame);
+
     if (!finished) {
       const interval = 1000 / 35;
       let nextTick = performance.now() + interval;
+
       const schedule = () => {
         timer = setTimeout(runTick, Math.max(0, nextTick - performance.now()));
       };
+
       const runTick = () => {
         timer = null;
-        if (finished || !exports) return;
+
+        if (finished || !exports) {
+          return;
+        }
+
         try {
           invoke(exports.tickGame);
         } catch (error) {
           console.error(error);
           finish(1);
         }
-        if (finished) return;
+
+        if (finished) {
+          return;
+        }
+
         const now = performance.now();
-        do nextTick += interval;
-        while (nextTick <= now);
+
+        do {
+          nextTick += interval;
+        } while (nextTick <= now);
+
         schedule();
       };
+
       schedule();
     }
   } catch (error) {

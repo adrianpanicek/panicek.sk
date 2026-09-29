@@ -1,6 +1,6 @@
-import { assertDoomArtifact } from './doom-artifact';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import {assertDoomArtifact} from './doom-artifact';
+import {copyFile, mkdir, rm} from 'node:fs/promises';
+import {join, resolve} from 'node:path';
 
 type PinnedDownload = {
   fileName: string;
@@ -49,7 +49,9 @@ async function sha256(path: string): Promise<string> {
 async function verifyDigest(path: string, expected: string): Promise<void> {
   const actual = await sha256(path);
   if (actual !== expected) {
-    throw new Error(`SHA-256 mismatch for ${path}: expected ${expected}, received ${actual}`);
+    throw new Error(
+      `SHA-256 mismatch for ${path}: expected ${expected}, received ${actual}`,
+    );
   }
 }
 
@@ -63,7 +65,9 @@ async function download(input: PinnedDownload): Promise<string> {
   console.log(`Downloading ${input.url}`);
   const response = await fetch(input.url);
   if (!response.ok) {
-    throw new Error(`Download failed for ${input.url}: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Download failed for ${input.url}: ${response.status} ${response.statusText}`,
+    );
   }
   await Bun.write(destination, response);
   await verifyDigest(destination, input.sha256);
@@ -83,35 +87,42 @@ async function run(command: string[], cwd = repositoryRoot): Promise<void> {
 }
 
 async function extract(archive: string, destination: string): Promise<void> {
-  await mkdir(destination, { recursive: true });
+  await mkdir(destination, {recursive: true});
   await run(['tar', '-xzf', archive, '-C', destination]);
 }
 
-await mkdir(archiveRoot, { recursive: true });
-await mkdir(vendorRoot, { recursive: true });
+await mkdir(archiveRoot, {recursive: true});
+await mkdir(vendorRoot, {recursive: true});
 
-const [upstreamArchive, wasiSdkArchive, binaryenArchive, wadArchive] = await Promise.all([
-  download(upstream),
-  download(wasiSdk),
-  download(binaryen),
-  download(sharewareArchive),
-]);
+const [upstreamArchive, wasiSdkArchive, binaryenArchive, wadArchive] =
+  await Promise.all([
+    download(upstream),
+    download(wasiSdk),
+    download(binaryen),
+    download(sharewareArchive),
+  ]);
 
-await rm(workRoot, { force: true, recursive: true });
-await mkdir(workRoot, { recursive: true });
+await rm(workRoot, {force: true, recursive: true});
+await mkdir(workRoot, {recursive: true});
 await extract(upstreamArchive, workRoot);
 await extract(wasiSdkArchive, workRoot);
 await extract(binaryenArchive, workRoot);
 
 const wadRoot = join(workRoot, 'shareware');
 await extract(wadArchive, wadRoot);
-await mkdir(join(sourceRoot, 'build'), { recursive: true });
+await mkdir(join(sourceRoot, 'build'), {recursive: true});
 const wadPath = join(wadRoot, 'doom-wad-shareware-1.9.fixed', 'doom1.wad');
-await verifyDigest(wadPath, '1d7d43be501e67d927e415e0b8f3e29c3bf33075e859721816f652a526cac771');
+await verifyDigest(
+  wadPath,
+  '1d7d43be501e67d927e415e0b8f3e29c3bf33075e859721816f652a526cac771',
+);
 await copyFile(wadPath, join(sourceRoot, 'build', 'DOOM1.WAD'));
 
 const patchPath = join(vendorRoot, 'doom-exit.patch');
-await run(['patch', '--batch', '--forward', '-p1', '-i', patchPath], sourceRoot);
+await run(
+  ['patch', '--batch', '--forward', '-p1', '-i', patchPath],
+  sourceRoot,
+);
 
 const wasiRoot = join(workRoot, 'wasi-sdk-24.0-x86_64-linux');
 const binaryenRoot = join(workRoot, 'binaryen-version_119');
@@ -140,11 +151,16 @@ await run(
 );
 
 const builtArtifact = join(sourceRoot, 'build', 'doom.wasm');
-const artifactBytes = new Uint8Array(await Bun.file(builtArtifact).arrayBuffer());
+const artifactBytes = new Uint8Array(
+  await Bun.file(builtArtifact).arrayBuffer(),
+);
 assertDoomArtifact(artifactBytes);
 const destination = join(vendorRoot, 'doom.wasm');
 await copyFile(builtArtifact, destination);
-await copyFile(join(sourceRoot, 'LICENSE'), join(vendorRoot, 'LICENSE-GPL-2.0.txt'));
+await copyFile(
+  join(sourceRoot, 'LICENSE'),
+  join(vendorRoot, 'LICENSE-GPL-2.0.txt'),
+);
 
 console.log(`Built ${destination}`);
 console.log(`SHA-256: ${await sha256(destination)}`);

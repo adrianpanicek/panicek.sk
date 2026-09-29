@@ -1,5 +1,5 @@
-import { chromium } from 'playwright';
-import { strict as assert } from 'node:assert';
+import {chromium} from 'playwright';
+import {strict as assert} from 'node:assert';
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH,
@@ -8,13 +8,16 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage();
   const ids: string[] = [];
-  await page.route('**/api/visit', async (route) => {
+  await page.route('**/api/visit', async route => {
     ids.push(route.request().postDataJSON().id);
-    await route.fulfill({ json: { visitors: 42 } });
+    await route.fulfill({json: {visitors: 42}});
   });
   await page.goto(process.env.TEST_URL || 'http://127.0.0.1:4321');
   await page.locator('#visitor-count').waitFor();
-  assert.equal(await page.locator('#visitor-count').textContent(), 'visitors: 42');
+  assert.equal(
+    await page.locator('#visitor-count').textContent(),
+    'visitors: 42',
+  );
   await page.reload();
   await page.locator('#visitor-count').waitFor();
   assert.equal(ids.length, 2);
@@ -23,7 +26,7 @@ try {
   await page.reload();
   await page.locator('#visitor-count').waitFor();
   assert.notEqual(ids[2], ids[0]);
-  await page.route('**/api/visit', (route) => route.abort());
+  await page.route('**/api/visit', route => route.abort());
   await page.reload();
   await page.waitForFunction(
     () => !document.querySelector<HTMLTextAreaElement>('#command')?.disabled,

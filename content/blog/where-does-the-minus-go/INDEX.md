@@ -1,5 +1,5 @@
 ---
-style: "line-height: 1.2; padding-left: 2em"
+style: "line-height: 1.2;"
 title: Where does the minus go?
 date: 2026-09-28
 tags:
@@ -9,7 +9,7 @@ tags:
 
 # Where does the minus go?
 
-Last time, we figured out how to represent numbers using only ones and zeros. With four bits, we could count from 0 to 15. Great. But what if it's minus five degrees outside? Where do we put the minus?
+Last time, we [figured out how to represent numbers using only ones and zeros](../computers-are-just-egg-cups/INDEX.md). With four bits, we could count from 0 to 15. Great. But what if it's minus five degrees outside? Where do we put the minus?
 
 On paper, we just write `-101` for negative five in binary. Inside a computer, though, we need a way to encode that sign using bits too.
 

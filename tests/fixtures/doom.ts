@@ -20,7 +20,9 @@ function encodeUnsigned(value: number): number[] {
   do {
     let byte = value & 0x7f;
     value >>>= 7;
-    if (value) byte |= 0x80;
+    if (value) {
+      byte |= 0x80;
+    }
     bytes.push(byte);
   } while (value);
   return bytes;
@@ -34,7 +36,9 @@ function encodeSigned(value: number): number[] {
     value >>= 7;
     const sign = (byte & 0x40) !== 0;
     done = (value === 0 && !sign) || (value === -1 && sign);
-    if (!done) byte |= 0x80;
+    if (!done) {
+      byte |= 0x80;
+    }
     bytes.push(byte);
   }
   return bytes;
@@ -53,7 +57,9 @@ function section(id: number, contents: number[]): number[] {
   return [id, ...encodeUnsigned(contents.length), ...contents];
 }
 
-export function doomBrowserFixture(start: 'draw' | 'trap' | 'exit' = 'draw'): Uint8Array {
+export function doomBrowserFixture(
+  start: 'draw' | 'trap' | 'exit' = 'draw',
+): Uint8Array {
   const constants = Object.entries(keyExports);
   const types = vector([
     [0x60, 0, 0],
@@ -61,9 +67,19 @@ export function doomBrowserFixture(start: 'draw' | 'trap' | 'exit' = 'draw'): Ui
     [0x60, 2, 0x7f, 0x7f, 0],
   ]);
   const imports = vector([
-    [...wasmString('lifecycle'), ...wasmString('onExit'), 0, ...encodeUnsigned(1)],
+    [
+      ...wasmString('lifecycle'),
+      ...wasmString('onExit'),
+      0,
+      ...encodeUnsigned(1),
+    ],
     [...wasmString('ui'), ...wasmString('drawFrame'), 0, ...encodeUnsigned(1)],
-    [...wasmString('loading'), ...wasmString('onGameInit'), 0, ...encodeUnsigned(2)],
+    [
+      ...wasmString('loading'),
+      ...wasmString('onGameInit'),
+      0,
+      ...encodeUnsigned(2),
+    ],
   ]);
   const functions = vector([[0], [0], [1], [1]]);
   const memory = vector([[0, ...encodeUnsigned(4)]]);
@@ -77,7 +93,11 @@ export function doomBrowserFixture(start: 'draw' | 'trap' | 'exit' = 'draw'): Ui
     [...wasmString('tickGame'), 0, 4],
     [...wasmString('reportKeyDown'), 0, 5],
     [...wasmString('reportKeyUp'), 0, 6],
-    ...constants.map(([name], index) => [...wasmString(name), 3, ...encodeUnsigned(index)]),
+    ...constants.map(([name], index) => [
+      ...wasmString(name),
+      3,
+      ...encodeUnsigned(index),
+    ]),
   ]);
   const initBody = [
     0,
@@ -96,11 +116,15 @@ export function doomBrowserFixture(start: 'draw' | 'trap' | 'exit' = 'draw'): Ui
   const tickBody = [0, 0x41, 0, 0x10, 1, 0x0b];
   const codes = vector(
     [
-      start === 'trap' ? [0, 0, 0x0b] : start === 'exit' ? [0, 0x41, 0, 0x10, 0, 0x0b] : initBody,
+      start === 'trap'
+        ? [0, 0, 0x0b]
+        : start === 'exit'
+          ? [0, 0x41, 0, 0x10, 0, 0x0b]
+          : initBody,
       tickBody,
       [0, 0x0b],
       [0, 0x0b],
-    ].map((body) => [...encodeUnsigned(body.length), ...body]),
+    ].map(body => [...encodeUnsigned(body.length), ...body]),
   );
 
   return new Uint8Array([
