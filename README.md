@@ -376,9 +376,12 @@ Local Markdown images reserve their intrinsic aspect ratio before loading; the
 build reads dimensions from PNG, JPEG, GIF, WebP, AVIF, and SVG files. For remote
 images, provide dimensions in the title, such as `"width=800 height=450"`.
 The optional `align=left`, `align=right`, or `align=center` follows the dimensions.
-
 Widths and heights accept pixels (bare numbers or `px`) and font-relative `em`
 units, including decimals: `![Cup](egg-cup-empty.gif "width=3em")`.
+
+The About portrait is preloaded at high priority on the homepage and when About
+is opened through a link or rendered in the terminal. Other pages do not preload
+it; other Markdown images remain lazy-loaded.
 
 Markdown YAML frontmatter can apply CSS declarations to the whole article:
 

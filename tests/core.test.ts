@@ -185,3 +185,11 @@ test('Markdown reserves local and explicitly sized remote images before loading'
   );
   expect(remote).toContain('width="800" height="450"');
 });
+
+test('About portrait is eager while other document images remain lazy', () => {
+  const markdown = '![Portrait](portrait.png)';
+  expect(renderMarkdown(markdown, '/home/web/ABOUT.md')).toContain(
+    'loading="eager" fetchpriority="high"',
+  );
+  expect(renderMarkdown(markdown, '/home/web/CAREER.md')).toContain('loading="lazy"');
+});

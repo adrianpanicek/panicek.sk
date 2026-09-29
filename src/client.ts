@@ -129,6 +129,17 @@ function plain(block: HTMLElement, text: string, error = false) {
   pre.textContent = text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(0, 1048576);
   block.append(pre);
 }
+function preloadAboutPortrait(source: string) {
+  if (source !== HOME + '/ABOUT.md' || document.querySelector('#portrait-preload')) return;
+  const link = document.createElement('link');
+  link.id = 'portrait-preload';
+  link.rel = 'preload';
+  link.as = 'image';
+  link.href = HOME + '/portrait.png';
+  link.fetchPriority = 'high';
+  link.referrerPolicy = 'no-referrer';
+  document.head.append(link);
+}
 function formatted(
   block: HTMLElement,
   text: string,
@@ -140,6 +151,7 @@ function formatted(
   const clean = decodeContactTokens(text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(0, 1048576));
   if (!clean) return;
   if (force) {
+    preloadAboutPortrait(source);
     const article = document.createElement('article');
     article.className = error ? 'markdown error' : 'markdown';
     article.dataset.source = source;
@@ -619,6 +631,7 @@ document.addEventListener('click', (event) => {
     return;
   event.preventDefault();
   if (!busy && !typing) {
+    preloadAboutPortrait(anchor.dataset.file!);
     if (isBlogPath(anchor.dataset.file!)) worker.postMessage({ type: 'blog-directory' });
     void animatedRun(
       catCommand(anchor.dataset.file!) + ' | render',

@@ -213,6 +213,8 @@ const title = 'Adrián Paníček — Software & Electronics';
 const socialImage = `${ORIGIN}/assets/social-card.png`;
 const socialImageAlt =
   'Adrián Paníček’s terminal-style portfolio, with his portrait and software and electronics focus.';
+const portraitPreload =
+  '<link id="portrait-preload" rel="preload" as="image" href="/home/web/portrait.png" fetchpriority="high" referrerpolicy="no-referrer">';
 const transcript = ['ABOUT.md']
   .map(
     (name) =>
@@ -244,6 +246,7 @@ const html = `<!doctype html>
 <meta name="author" content="Adrián Paníček"><meta name="application-name" content="Adrián Paníček — Portfolio">
 <meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="index,follow"><meta name="theme-color" content="#0b0d10">
 <link rel="canonical" href="${ORIGIN}/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/styles.css">
+${portraitPreload}
 <link rel="preload" href="/filesystem.json" as="fetch" crossorigin="anonymous" fetchpriority="high">
 <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Portfolio as Markdown">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Adrián Paníček — Portfolio"><meta property="og:locale" content="en_GB"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${ORIGIN}/">
@@ -266,6 +269,7 @@ await Bun.write(
 // A neutral shell for service-worker navigations, including locally created directories.
 const directoryHtml = html
   .replace(transcript, '')
+  .replace(portraitPreload, '')
   .replace(
     /<noscript>[\s\S]*?<\/noscript>/,
     '<noscript>Enable JavaScript to browse this directory.</noscript>',

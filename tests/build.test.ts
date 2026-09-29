@@ -139,3 +139,18 @@ test('direct blog HTML contains only its index and the directory shell has no in
   expect(shell).not.toContain('data-source="/home/web/ABOUT.md"');
   expect(shell).toContain('id="command-form"');
 });
+
+test('homepage preloads the About portrait without fetching it on blog pages', async () => {
+  const home = await Bun.file('dist/index.html').text();
+  expect(home).toContain(
+    'id="portrait-preload" rel="preload" as="image" href="/home/web/portrait.png"',
+  );
+  expect(home).toContain('loading="eager" fetchpriority="high"');
+  const blogPages = Array.from(
+    new Bun.Glob('**/index.html').scanSync('dist/home/web/blog'),
+    (path) => `dist/home/web/blog/${path}`,
+  );
+  expect(blogPages.length).toBeGreaterThan(1);
+  for (const path of ['dist/assets/directory.html', ...blogPages])
+    expect(await Bun.file(path).text()).not.toContain('id="portrait-preload"');
+});

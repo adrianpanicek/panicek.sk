@@ -137,7 +137,11 @@ export function renderMarkdown(
       : title
         ? ` title="${escapeHtml(title)}"`
         : '';
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text)}"${attributes}${dimensions} loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+    const loading =
+      source === '/home/web/ABOUT.md' && local?.path === '/home/web/portrait.png'
+        ? 'loading="eager" fetchpriority="high"'
+        : 'loading="lazy"';
+    return `<img src="${escapeHtml(src)}" alt="${escapeHtml(text)}"${attributes}${dimensions} ${loading} decoding="async" referrerpolicy="no-referrer">`;
   };
   renderer.link = function ({ href, tokens }) {
     const label = this.parser.parseInline(tokens);
