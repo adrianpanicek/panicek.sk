@@ -1,5 +1,5 @@
 ---
-style: "line-height: 1.2; padding: 10em"
+style: "line-height: 1.2; padding-left: 2em"
 title: Where does the minus go?
 date: 2026-09-28
 tags:
