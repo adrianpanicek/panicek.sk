@@ -1,5 +1,5 @@
 ---
-style: "line-height: 1.2"
+style: "line-height: 1.2; padding: 10em"
 title: ALU is not a metal
 date: 2026-09-28
 tags:

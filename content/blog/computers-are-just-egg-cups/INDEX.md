@@ -1,5 +1,5 @@
 ---
-style: "line-height: 1.2"
+style: "line-height: 1.2; padding: 10em"
 title: Computers are just egg cups
 date: 2026-09-23
 tags:
