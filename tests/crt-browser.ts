@@ -30,7 +30,8 @@ try {
     await imageReady;
     await route.continue();
   });
-  await page.goto(base);
+  // The eager portrait delays load; inspect its reserved space before releasing it.
+  await page.goto(base, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
     () =>
       !document.querySelector<HTMLTextAreaElement>('#command')?.disabled &&

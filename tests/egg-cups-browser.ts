@@ -76,7 +76,14 @@ try {
     assert.equal(await result.textContent(), '15');
     await page.setViewportSize({ width: 375, height: 812 });
     const bounds = await second.boundingBox();
-    assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 375);
+    assert.ok(
+      bounds &&
+        bounds.width > 0 &&
+        bounds.height > 0 &&
+        bounds.x >= 0 &&
+        bounds.x + bounds.width <= 375,
+      `calculator must have a visible box within the mobile viewport: ${JSON.stringify(bounds)}`,
+    );
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await second.screenshot({ path: '/tmp/egg-cups-calculator.png' });
   }
